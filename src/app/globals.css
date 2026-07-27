@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  @apply font-body text-ink antialiased;
+}
+
+/* Full-bleed blurred background image used across every app screen (background.jpg).
+   Sits behind everything at z-index -1. The overlay used to be 86–94% white,
+   which washed the photo out to near-invisible — lightened it so the blur is
+   actually visible while the UI on top stays readable. */
+.app-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: url('/background.jpg');
+  background-size: cover;
+  background-position: center;
+  filter: blur(28px) saturate(1.15);
+  transform: scale(1.1);
+}
+
+.app-background::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(244, 248, 255, 0.4) 0%, rgba(244, 248, 255, 0.62) 55%, rgba(244, 248, 255, 0.78) 100%);
+}
+
+/* Distinct backdrop used only on the auth (sign in / sign up) screens */
+.auth-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: url('/auth.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+.auth-background::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 26, 86, 0.55) 0%, rgba(10, 31, 60, 0.82) 100%);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.glass-nav {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(22px) saturate(1.4);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+}
+
+::selection {
+  background: #1C54F5;
+  color: #fff;
+}
+
+/* Hide scrollbars on horizontally scrollable rows without losing scroll */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
