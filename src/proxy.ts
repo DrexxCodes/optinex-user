@@ -27,5 +27,18 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/streak/:path*', '/tasks/:path*', '/investment/:path*', '/withdrawal/:path*', '/casino/:path*', '/auth/:path*']
+  matcher: [
+    '/dashboard/:path*',
+    '/streak/:path*',
+    '/tasks/:path*',
+    '/investment/:path*',
+    '/withdrawal/:path*',
+    '/casino/:path*',
+    '/profile/:path*',
+    '/referral/:path*',
+    '/transactions/:path*',
+    '/upgrade/:path*',
+    '/admin/:path*',
+    '/auth/:path*'
+  ]
 };

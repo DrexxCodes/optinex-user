@@ -10,6 +10,8 @@ export type CurrentUser = {
   username: string;
   walletAmount: number;
   packageStatus: string;
+  accountTier: 'standard' | 'upgraded';
+  upgradeStatus: 'none' | 'pending' | 'active';
   payoutMethod: {
     accountNumber: string;
     bankCode: string;

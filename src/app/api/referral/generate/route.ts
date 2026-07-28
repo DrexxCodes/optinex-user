@@ -11,7 +11,7 @@ export async function POST() {
   const snap = await userRef.get();
   if (!snap.exists) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
-  // Idempotent — if a link already exists, just hand it back instead of
+  // Idempotency cos if a link already exists, just hand it back instead of
   // minting a second one.
   const existing = snap.data()!.referralKey;
   if (existing) return NextResponse.json({ referralKey: existing });

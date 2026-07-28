@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowDownToLine, TrendingUp } from 'lucide-react';
+import { ArrowDownToLine, ChevronsUp, TrendingUp } from 'lucide-react';
 import { MaskedAmount, BalanceToggleButton, useBalanceVisibility } from '../../components/WalletBalance';
 import type { CurrentUser } from '../../lib/useCurrentUser';
 
@@ -35,6 +35,16 @@ export default function WalletCard({ user }: { user: CurrentUser }) {
           <ArrowDownToLine size={16} /> Withdraw
         </Link>
       </div>
+
+      {user.accountTier !== 'upgraded' && (
+        <Link
+          href="/upgrade"
+          className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
+        >
+          <ChevronsUp size={16} />
+          {user.upgradeStatus === 'pending' ? 'Upgrade Pending Verification' : 'Upgrade Account'}
+        </Link>
+      )}
     </div>
   );
 }

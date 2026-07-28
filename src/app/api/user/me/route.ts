@@ -20,6 +20,8 @@ export async function GET() {
     username: user.username,
     walletAmount: user.walletAmount ?? 0,
     packageStatus: user.packageStatus ?? 'Free',
+    accountTier: user.accountTier ?? 'standard',
+    upgradeStatus: user.upgradeStatus ?? 'none',
     payoutMethod: user.payoutMethod ?? null,
     admin: !!user.admin,
     avatarUrl: avatarPath(user.email)

@@ -12,7 +12,10 @@ export type AnalyticsAction =
   | 'investment_submitted'
   | 'investment_verified'
   | 'withdrawal_requested'
-  | 'casino_score_submitted';
+  | 'casino_score_submitted'
+  | 'referral_bonus'
+  | 'account_upgrade_submitted'
+  | 'account_upgrade_verified';
 
 function pad(n: number) {
   return String(n).padStart(2, '0');

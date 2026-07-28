@@ -7,8 +7,8 @@ export type Task = {
   id: string;
   name: string;
   details: string;
-  buttonLabel: string;
-  link: string;
+  buttonLabel?: string;
+  link?: string;
   reward: number;
   completed: boolean;
 };
@@ -34,8 +34,9 @@ export function useTasks() {
     async (task: Task) => {
       setError(null);
       setClaimingId(task.id);
-      // Open the task's link in a new tab, then award the reward.
-      window.open(task.link, '_blank', 'noopener,noreferrer');
+      // Only open a new tab when the admin actually set a link for this task —
+      // otherwise the button is a plain "Complete" action.
+      if (task.link) window.open(task.link, '_blank', 'noopener,noreferrer');
       try {
         const res = await authFetch(`/api/tasks/${task.id}/complete`, { method: 'POST' });
         const data = await res.json();

@@ -43,10 +43,13 @@ export async function POST(req: NextRequest) {
       if (!referrerSnap.empty) referredBy = referrerSnap.docs[0].id;
     }
 
+    const REFERRAL_BONUS = 100;
     const passwordHash = await bcrypt.hash(password, 10);
 
     const userRef = usersRef.doc();
-    await userRef.set({
+    const batch = adminDb.batch();
+
+    batch.set(userRef, {
       fullName,
       email: normalizedEmail,
       username: normalizedUsername,
@@ -60,9 +63,31 @@ export async function POST(req: NextRequest) {
       referralKey: null, // generated on demand from the Referral page
       referralEarnings: 0,
       referredBy,
+      accountTier: 'standard',
+      upgradeStatus: 'none',
       avatarSeed: normalizedEmail,
       createdAt: FieldValue.serverTimestamp()
     });
+
+    // Referral bonus: ₦100 to the referrer's wallet, credited the moment the
+    // referred account is created (not gated on the new user doing anything
+    // else). Recorded as a normal wallet transaction so it shows up in the
+    // referrer's activity feed like any other credit.
+    if (referredBy) {
+      const referrerRef = usersRef.doc(referredBy);
+      batch.set(referrerRef, { walletAmount: FieldValue.increment(REFERRAL_BONUS), referralEarnings: FieldValue.increment(REFERRAL_BONUS) }, { merge: true });
+      batch.set(referrerRef.collection('walletTransactions').doc(), {
+        txnType: 'credit',
+        txnName: 'Referral bonus',
+        amount: REFERRAL_BONUS,
+        txnRef: `@${normalizedUsername} joined`,
+        timestamp: FieldValue.serverTimestamp()
+      });
+    }
+
+    await batch.commit();
+
+    if (referredBy) await logAnalyticsEvent('referral_bonus', REFERRAL_BONUS);
 
     await logAnalyticsEvent('signup');
 

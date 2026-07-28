@@ -33,10 +33,12 @@ export default function TaskCard({
           </>
         ) : claiming ? (
           'Claiming…'
-        ) : (
+        ) : task.link ? (
           <>
-            {task.buttonLabel} <ExternalLink size={14} />
+            {task.buttonLabel || 'Complete'} <ExternalLink size={14} />
           </>
+        ) : (
+          'Complete'
         )}
       </button>
     </div>

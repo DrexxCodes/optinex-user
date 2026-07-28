@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAvatarSvg } from '@/lib/dicebear';
 
-// Renders the user's Dicebear avatar as an SVG directly from our own server —
+// Renders the user's Dicebear avatar as an SVG directly from our own server as
 // no request ever leaves the app to api.dicebear.com. The route param is the
 // (lowercased, trimmed) email seed, so the same account always gets the same
 // avatar without storing any image bytes in Firestore.

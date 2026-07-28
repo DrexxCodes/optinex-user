@@ -44,6 +44,8 @@ body {
   background-image: url('/auth.jpg');
   background-size: cover;
   background-position: center;
+  filter: blur(18px) saturate(1.1);
+  transform: scale(1.1);
 }
 
 .auth-background::after {
