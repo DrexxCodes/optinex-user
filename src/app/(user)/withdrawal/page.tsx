@@ -6,7 +6,7 @@ import PayoutMethodForm from './components/PayoutMethodForm';
 import WithdrawalForm from './components/WithdrawalForm';
 
 export default function WithdrawalPage() {
-  const { status, loading, requestWithdrawal, savePayoutMethod } = useWithdrawal();
+  const { status, loading, refresh, requestWithdrawal, savePayoutMethod } = useWithdrawal();
   const { visible, toggle } = useBalanceVisibility();
 
   return (
@@ -30,7 +30,7 @@ export default function WithdrawalPage() {
 
           <div className="mt-5 space-y-4">
             {!status.payoutMethod && <PayoutMethodForm onSaved={savePayoutMethod} />}
-            <WithdrawalForm status={status} onRequest={requestWithdrawal} />
+            <WithdrawalForm status={status} onRequest={requestWithdrawal} onRefresh={refresh} />
           </div>
         </>
       )}

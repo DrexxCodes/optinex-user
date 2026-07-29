@@ -19,7 +19,11 @@ export default function PayoutMethodForm({
   const [error, setError] = useState<string | null>(null);
 
   const resolve = async () => {
-    if (accountNumber.length !== 10 || !bankCode) return;
+    if (accountNumber.length !== 10) return;
+    if (!bankCode) {
+      setError('Select a bank first.');
+      return;
+    }
     setResolving(true);
     setError(null);
     setAccountName(null);
@@ -64,17 +68,27 @@ export default function PayoutMethodForm({
 
       <label className="mt-3 block">
         <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink/50">Account Number</span>
-        <input
-          value={accountNumber}
-          onChange={(e) => {
-            setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10));
-            setAccountName(null);
-          }}
-          onBlur={resolve}
-          maxLength={10}
-          placeholder="0123456789"
-          className="w-full rounded-xl border border-brand-100 bg-white/80 px-4 py-3 text-sm text-ink outline-none focus:border-brand-500"
-        />
+        <div className="flex gap-2">
+          <input
+            value={accountNumber}
+            onChange={(e) => {
+              setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10));
+              setAccountName(null);
+              setError(null);
+            }}
+            maxLength={10}
+            placeholder="0123456789"
+            className="w-full flex-1 rounded-xl border border-brand-100 bg-white/80 px-4 py-3 text-sm text-ink outline-none focus:border-brand-500"
+          />
+          <button
+            type="button"
+            onClick={resolve}
+            disabled={accountNumber.length !== 10 || resolving}
+            className="shrink-0 rounded-xl bg-brand-500 px-4 py-3 text-sm font-semibold text-white transition disabled:bg-ink/10 disabled:text-ink/40"
+          >
+            {resolving ? 'Verifying…' : 'Verify'}
+          </button>
+        </div>
       </label>
 
       {resolving && <p className="mt-2 text-xs text-ink/50">Resolving account…</p>}

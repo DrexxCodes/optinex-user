@@ -6,10 +6,11 @@ export async function GET() {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 });
 
-  const res = await fetch('https://api.paystack.co/bank?country=nigeria', {
-    headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
-    next: { revalidate: 60 * 60 * 24 } // bank list barely changes — cache a day
-  });
+
+const res = await fetch('https://api.paystack.co/bank?country=nigeria&type=nuban', {
+  headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+  next: { revalidate: 60 * 60 * 24 }
+});
 
   if (!res.ok) return NextResponse.json({ error: 'Could not load bank list.' }, { status: 502 });
 

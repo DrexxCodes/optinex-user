@@ -3,13 +3,16 @@
 import { useState } from 'react';
 import { Lock, Check } from 'lucide-react';
 import type { WithdrawalStatus } from '../lib/useWithdrawal';
+import WithdrawalCountdown from './WithdrawalCountdown';
 
 export default function WithdrawalForm({
   status,
-  onRequest
+  onRequest,
+  onRefresh
 }: {
   status: WithdrawalStatus;
   onRequest: (amount: number) => Promise<{ ok: boolean; error?: string; reference?: string }>;
+  onRefresh?: () => void;
 }) {
   const [amount, setAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -17,14 +20,17 @@ export default function WithdrawalForm({
   const [success, setSuccess] = useState<string | null>(null);
 
   if (!status.allowed) {
+    const showCountdown = !!status.enabledDate && new Date(status.enabledDate).getTime() > Date.now();
+
     return (
       <div className="glass-panel flex items-start gap-3 rounded-2xl p-5 shadow-card">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
           <Lock size={17} />
         </span>
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-ink">Withdrawals locked</p>
           <p className="mt-0.5 text-sm text-ink/60">{status.reason}</p>
+          {showCountdown && <WithdrawalCountdown targetDate={status.enabledDate!} onExpire={onRefresh} />}
         </div>
       </div>
     );
