@@ -3,10 +3,14 @@ import type { InvestmentPackage } from '../lib/useInvestment';
 
 export default function PackageCard({
   pkg,
-  onPay
+  onPay,
+  isCurrentPackage,
+  canChange
 }: {
   pkg: InvestmentPackage;
   onPay: (pkg: InvestmentPackage) => void;
+  isCurrentPackage?: boolean;
+  canChange?: boolean;
 }) {
   return (
     <div className="glass-panel animate-fade-up rounded-2xl p-5 shadow-card">
@@ -26,11 +30,17 @@ export default function PackageCard({
         </ul>
       )}
 
+      {isCurrentPackage && (
+        <div className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-center text-xs font-semibold text-emerald-700">
+          Current Package
+        </div>
+      )}
+
       <button
         onClick={() => onPay(pkg)}
         className="mt-4 w-full rounded-xl bg-brand-500 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600"
       >
-        Pay & Subscribe
+        {canChange && !isCurrentPackage ? 'Change to This Package' : isCurrentPackage ? 'Renew Package' : 'Pay & Subscribe'}
       </button>
     </div>
   );

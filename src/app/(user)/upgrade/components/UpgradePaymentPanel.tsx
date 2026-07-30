@@ -1,9 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { Copy, Check, UploadCloud, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Copy, Check, UploadCloud, Sparkles, Clock } from 'lucide-react';
 import { UploadButton } from '@/lib/uploadthing';
 import type { UpgradeBank } from '../lib/useUpgrade';
+
+const TIMER_STORAGE_KEY = 'upgrade_payment_timer';
+const TIMER_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+const COOLDOWN_DURATION_MS = 60 * 60 * 1000; // 1 hour
+
+function formatTimeRemaining(ms: number): string {
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
 
 export default function UpgradePaymentPanel({
   price,
@@ -18,6 +28,72 @@ export default function UpgradePaymentPanel({
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [timerActive, setTimerActive] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [cooldownActive, setCooldownActive] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+
+  // Initialize timer and cooldown on mount
+  useEffect(() => {
+    const timerData = localStorage.getItem(TIMER_STORAGE_KEY);
+    if (timerData) {
+      const { expiresAt, cooldownExpiresAt } = JSON.parse(timerData);
+      const now = Date.now();
+      
+      if (cooldownExpiresAt && now < cooldownExpiresAt) {
+        setCooldownActive(true);
+        setCooldownRemaining(cooldownExpiresAt - now);
+      } else if (expiresAt && now < expiresAt) {
+        setTimerActive(true);
+        setTimeRemaining(expiresAt - now);
+      } else {
+        localStorage.removeItem(TIMER_STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  // Timer countdown for payment timer
+  useEffect(() => {
+    if (!timerActive || timeRemaining <= 0) return;
+
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        const newTime = prev - 1000;
+        if (newTime <= 0) {
+          setTimerActive(false);
+          const cooldownExpiresAt = Date.now() + COOLDOWN_DURATION_MS;
+          const timerData = localStorage.getItem(TIMER_STORAGE_KEY) || '{}';
+          const data = JSON.parse(timerData);
+          localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify({ ...data, cooldownExpiresAt }));
+          setCooldownActive(true);
+          setCooldownRemaining(COOLDOWN_DURATION_MS);
+          return 0;
+        }
+        return newTime;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timerActive, timeRemaining]);
+
+  // Timer countdown for cooldown
+  useEffect(() => {
+    if (!cooldownActive || cooldownRemaining <= 0) return;
+
+    const interval = setInterval(() => {
+      setCooldownRemaining((prev) => {
+        const newTime = prev - 1000;
+        if (newTime <= 0) {
+          setCooldownActive(false);
+          localStorage.removeItem(TIMER_STORAGE_KEY);
+          return 0;
+        }
+        return newTime;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [cooldownActive, cooldownRemaining]);
 
   const copyAccount = () => {
     if (!bank) return;
@@ -26,13 +102,26 @@ export default function UpgradePaymentPanel({
     setTimeout(() => setCopied(false), 1500);
   };
 
+  const startTimer = () => {
+    const expiresAt = Date.now() + TIMER_DURATION_MS;
+    localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify({ expiresAt }));
+    setTimerActive(true);
+    setTimeRemaining(TIMER_DURATION_MS);
+  };
+
   const submit = async () => {
     if (!receiptUrl) return;
     setSubmitting(true);
     setError(null);
     const res = await onSubmit(receiptUrl);
     setSubmitting(false);
-    if (!res.ok) setError(res.error ?? 'Could not submit your receipt.');
+    if (res.ok) {
+      localStorage.removeItem(TIMER_STORAGE_KEY);
+      setTimerActive(false);
+      setCooldownActive(false);
+    } else {
+      setError(res.error ?? 'Could not submit your receipt.');
+    }
   };
 
   if (price == null) {
@@ -72,7 +161,20 @@ export default function UpgradePaymentPanel({
       )}
 
       <div className="mt-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink/50">Upload Receipt</p>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink/50">Upload Receipt</p>
+          {timerActive && (
+            <div className="flex items-center gap-1 text-xs font-semibold text-amber-600">
+              <Clock size={14} /> {formatTimeRemaining(timeRemaining)}
+            </div>
+          )}
+          {cooldownActive && (
+            <div className="text-xs font-semibold text-red-600">
+              Wait {formatTimeRemaining(cooldownRemaining)} to retry
+            </div>
+          )}
+        </div>
+
         {receiptUrl ? (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-600">
             <Check size={16} /> Receipt uploaded
@@ -80,17 +182,25 @@ export default function UpgradePaymentPanel({
         ) : (
           <UploadButton
             endpoint="paymentReceipt"
-            onClientUploadComplete={(res) => setReceiptUrl(res?.[0]?.url ?? null)}
+            onClientUploadComplete={(res) => {
+              const url = res?.[0]?.url ?? null;
+              if (url) {
+                setReceiptUrl(url);
+                // Start timer when receipt is uploaded
+                startTimer();
+              }
+            }}
             onUploadError={(e) => setError(e.message)}
+            disabled={cooldownActive}
             appearance={{
               button:
-                'w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-200 bg-white/60 py-3 text-sm font-semibold text-brand-600 ut-uploading:opacity-60',
+                'w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-200 bg-white/60 py-3 text-sm font-semibold text-brand-600 ut-uploading:opacity-60 disabled:opacity-50 disabled:cursor-not-allowed',
               allowedContent: 'hidden'
             }}
             content={{
               button: () => (
                 <span className="flex items-center gap-2">
-                  <UploadCloud size={16} /> Choose receipt
+                  <UploadCloud size={16} /> {cooldownActive ? 'Upload locked' : 'Choose receipt'}
                 </span>
               )
             }}

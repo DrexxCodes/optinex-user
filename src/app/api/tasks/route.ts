@@ -16,17 +16,20 @@ export async function GET() {
   const completedIds = new Set(completedSnap.docs.map((d) => d.id));
 
   return NextResponse.json({
-    tasks: tasksSnap.docs.map((d) => {
-      const t = d.data();
-      return {
-        id: d.id,
-        name: t.name,
-        details: t.details,
-        buttonLabel: t.buttonLabel,
-        link: t.link,
-        reward: t.reward,
-        completed: completedIds.has(d.id)
-      };
-    })
+    // Completed tasks are dropped entirely rather than flagged — once a user
+    // claims a task's reward, it should disappear from their list for good.
+    tasks: tasksSnap.docs
+      .filter((d) => !completedIds.has(d.id))
+      .map((d) => {
+        const t = d.data();
+        return {
+          id: d.id,
+          name: t.name,
+          details: t.details,
+          buttonLabel: t.buttonLabel,
+          link: t.link,
+          reward: t.reward
+        };
+      })
   });
 }

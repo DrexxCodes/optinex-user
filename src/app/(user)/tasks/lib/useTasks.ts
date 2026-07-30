@@ -10,7 +10,6 @@ export type Task = {
   buttonLabel?: string;
   link?: string;
   reward: number;
-  completed: boolean;
 };
 
 export function useTasks() {
@@ -44,7 +43,7 @@ export function useTasks() {
           setError(data.error ?? 'Could not claim this task.');
           return;
         }
-        setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, completed: true } : t)));
+        setTasks((prev) => prev.filter((t) => t.id !== task.id));
       } finally {
         setClaimingId(null);
       }

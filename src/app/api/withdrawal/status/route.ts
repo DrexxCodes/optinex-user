@@ -18,6 +18,7 @@ export async function GET() {
   const enabledDate = config.enabledDate?.toDate?.() ?? null;
 
   const dateThresholdReached = !!enabledDate && new Date() >= enabledDate;
+  const isUpgraded = user.accountTier === 'upgraded';
   const hasPaidPackage = user.packageStatus && user.packageStatus !== 'Free' && user.packageStatus !== 'pending verification';
 
   let reason: string | null = null;
@@ -25,6 +26,8 @@ export async function GET() {
     reason = "Withdrawal isn't enabled yet. Check back later.";
   } else if (!dateThresholdReached) {
     reason = "Withdrawal isn't enabled yet. Check back later.";
+  } else if (!isUpgraded) {
+    reason = 'You must upgrade your account to access withdrawals.';
   } else if (!hasPaidPackage) {
     reason = 'A paid package is required before you can withdraw.';
   }

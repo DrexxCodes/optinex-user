@@ -1,12 +1,33 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowDownToLine, ChevronsUp, TrendingUp } from 'lucide-react';
+import { ArrowDownToLine, TrendingUp, Clock, ChevronsUp } from 'lucide-react';
 import { MaskedAmount, BalanceToggleButton, useBalanceVisibility } from '../../components/WalletBalance';
+import { formatTimeRemaining } from '@/lib/timerUtils';
 import type { CurrentUser } from '../../lib/useCurrentUser';
 
 export default function WalletCard({ user }: { user: CurrentUser }) {
   const { visible, toggle } = useBalanceVisibility();
+  const [timeRemaining, setTimeRemaining] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user.packageExpiresAt || user.packageStatus === 'Free') return;
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = user.packageExpiresAt! - now;
+      if (remaining > 0) {
+        setTimeRemaining(formatTimeRemaining(remaining));
+      } else {
+        setTimeRemaining(null);
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [user.packageExpiresAt, user.packageStatus]);
 
   return (
     <div className="animate-fade-up rounded-3xl bg-gradient-to-br from-brand-500 to-brand-800 p-6 text-white shadow-glass">
@@ -17,8 +38,15 @@ export default function WalletCard({ user }: { user: CurrentUser }) {
       <p className="mt-2 font-display text-3xl font-bold">
         <MaskedAmount amount={user.walletAmount} visible={visible} />
       </p>
-      <div className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold">
-        {user.packageStatus}
+      <div className="mt-3 space-y-2">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold">
+          {user.packageStatus}
+        </div>
+        {timeRemaining && user.packageStatus !== 'Free' && (
+          <div className="ml-2 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold">
+            <Clock size={12} /> {timeRemaining}
+          </div>
+        )}
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3">
@@ -36,7 +64,7 @@ export default function WalletCard({ user }: { user: CurrentUser }) {
         </Link>
       </div>
 
-      {user.accountTier !== 'upgraded' && (
+      {user.packageStatus === 'Free' && (
         <Link
           href="/upgrade"
           className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"

@@ -1,4 +1,4 @@
-import { CheckCircle2, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import type { Task } from '../lib/useTasks';
 
 export default function TaskCard({
@@ -24,14 +24,10 @@ export default function TaskCard({
 
       <button
         onClick={() => onClaim(task)}
-        disabled={task.completed || claiming}
+        disabled={claiming}
         className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 py-2.5 text-sm font-semibold text-white transition disabled:bg-emerald-500/90"
       >
-        {task.completed ? (
-          <>
-            <CheckCircle2 size={16} /> Reward Claimed
-          </>
-        ) : claiming ? (
+        {claiming ? (
           'Claiming…'
         ) : task.link ? (
           <>

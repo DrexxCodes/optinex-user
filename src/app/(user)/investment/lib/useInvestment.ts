@@ -19,10 +19,17 @@ export type LatestRequest = {
   reference: string;
 } | null;
 
+export type UserPackageStatus = {
+  packageStatus: string;
+  packageName?: string;
+  isChangingPackage?: boolean;
+} | null;
+
 export function useInvestment() {
   const [packages, setPackages] = useState<InvestmentPackage[]>([]);
   const [bank, setBank] = useState<{ bankName: string; accountNumber: string; accountName: string } | null>(null);
   const [latestRequest, setLatestRequest] = useState<LatestRequest>(null);
+  const [userPackage, setUserPackage] = useState<UserPackageStatus>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -36,6 +43,11 @@ export function useInvestment() {
       const data = await statusRes.json();
       setBank(data.bank);
       setLatestRequest(data.latestRequest);
+      setUserPackage({
+        packageStatus: data.packageStatus,
+        packageName: data.packageName,
+        isChangingPackage: data.isChangingPackage
+      });
     }
     setLoading(false);
   }, []);
@@ -54,5 +66,17 @@ export function useInvestment() {
     return { ok: res.ok, error: data.error };
   }, [load]);
 
-  return { packages, bank, latestRequest, loading, refresh: load, submitReceipt };
+  const changePackage = useCallback(async (packageId: string, receiptUrl: string) => {
+    const res = await authFetch('/api/investment/change-package', {
+      method: 'POST',
+      body: JSON.stringify({ packageId, receiptUrl })
+    });
+    const data = await res.json();
+    if (res.ok) await load();
+    return { ok: res.ok, error: data.error };
+  }, [load]);
+
+  const canChangePackage = userPackage && userPackage.packageStatus !== 'Free' && !userPackage.isChangingPackage;
+
+  return { packages, bank, latestRequest, userPackage, loading, refresh: load, submitReceipt, changePackage, canChangePackage };
 }

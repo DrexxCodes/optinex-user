@@ -1,5 +1,3 @@
-import { redirect } from 'next/navigation';
-import { getSessionUser } from '@/lib/auth/session';
 import Navbar from '@/components/landing/Navbar';
 import Hero from '@/components/landing/Hero';
 import TrustBar from '@/components/landing/TrustBar';
@@ -10,14 +8,7 @@ import Testimonials from '@/components/landing/Testimonials';
 import Faq from '@/components/landing/Faq';
 import Footer from '@/components/landing/Footer';
 
-export default async function RootPage() {
-  const session = await getSessionUser();
-
-  // Already signed in — skip the marketing page entirely.
-  if (session) {
-    redirect('/dashboard');
-  }
-
+export default function MarketingLandingPage() {
   return (
     <main className="relative min-h-screen bg-frost">
       <div className="app-background" />

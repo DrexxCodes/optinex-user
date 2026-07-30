@@ -10,6 +10,9 @@ export type CurrentUser = {
   username: string;
   walletAmount: number;
   packageStatus: string;
+  packageName?: string;
+  packageExpiresAt?: number;
+  isChangingPackage?: boolean;
   accountTier: 'standard' | 'upgraded';
   upgradeStatus: 'none' | 'pending' | 'active';
   payoutMethod: {

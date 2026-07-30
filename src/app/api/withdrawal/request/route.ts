@@ -28,9 +28,11 @@ export async function POST(req: NextRequest) {
       const config = configSnap.exists ? configSnap.data()! : {};
       const enabledDate = config.enabledDate?.toDate?.() ?? null;
       const dateThresholdReached = !!enabledDate && new Date() >= enabledDate;
+      const isUpgraded = user.accountTier === 'upgraded';
       const hasPaidPackage = user.packageStatus && user.packageStatus !== 'Free' && user.packageStatus !== 'pending verification';
 
       if (!dateThresholdReached) throw new Error('WITHDRAWAL_NOT_ENABLED');
+      if (!isUpgraded) throw new Error('UPGRADE_REQUIRED');
       if (!hasPaidPackage) throw new Error('PACKAGE_REQUIRED');
       if (!user.payoutMethod) throw new Error('NO_PAYOUT_METHOD');
       if ((user.walletAmount ?? 0) < amount) throw new Error('INSUFFICIENT_BALANCE');
@@ -66,6 +68,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     const messages: Record<string, string> = {
       WITHDRAWAL_NOT_ENABLED: "Withdrawal isn't enabled yet. Check back later.",
+      UPGRADE_REQUIRED: 'You must upgrade your account to access withdrawals.',
       PACKAGE_REQUIRED: 'A paid package is required before you can withdraw.',
       NO_PAYOUT_METHOD: 'Add your payout details before requesting a withdrawal.',
       INSUFFICIENT_BALANCE: 'Your wallet balance is too low for this amount.'
