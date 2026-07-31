@@ -21,6 +21,7 @@ export type LatestRequest = {
 
 export type UserPackageStatus = {
   packageStatus: string;
+  packageId?: string | null;
   packageName?: string;
   isChangingPackage?: boolean;
 } | null;
@@ -45,6 +46,7 @@ export function useInvestment() {
       setLatestRequest(data.latestRequest);
       setUserPackage({
         packageStatus: data.packageStatus,
+        packageId: data.packageId,
         packageName: data.packageName,
         isChangingPackage: data.isChangingPackage
       });

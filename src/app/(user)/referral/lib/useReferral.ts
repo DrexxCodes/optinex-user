@@ -57,6 +57,47 @@ export function useReferral() {
   return { state, loading, generating, error, generate, refresh: load };
 }
 
+export type LeaderboardEntry = {
+  uid: string;
+  fullName: string;
+  username: string;
+  referrals: number;
+  rank: number;
+};
+
+export type LeaderboardState = {
+  leaderboard: LeaderboardEntry[];
+  you: { rank: number; referrals: number } | null;
+};
+
+export function useReferralLeaderboard() {
+  const [state, setState] = useState<LeaderboardState | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await authFetch('/api/referral/leaderboard');
+      const data = await res.json();
+      if (res.ok) {
+        setState(data);
+      } else {
+        setError(data.error ?? 'Could not load the leaderboard.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return { state, loading, error, refresh: load };
+}
+
 export function referralLink(referralKey: string): string {
   if (typeof window === 'undefined') return `https://optinexglobal.com/auth/signup?ref=${referralKey}`;
   return `${window.location.origin}/auth/signup?ref=${referralKey}`;

@@ -5,7 +5,7 @@ import { getSessionUser } from '@/lib/auth/session';
 import { generateReference } from '@/lib/refGenerator';
 import { logAnalyticsEvent } from '@/lib/analytics';
 
-const CHECKIN_REWARD = 25;
+const CHECKIN_REWARD = 1000;
 const CYCLE_MS = 1000 * 60 * 60 * 24;
 
 export async function POST() {

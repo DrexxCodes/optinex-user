@@ -18,7 +18,7 @@ export default function StreakHistory({
             <div className="flex-1">
               <p className="text-sm font-medium text-ink">{h.date}</p>
             </div>
-            <p className="text-sm font-semibold text-emerald-600">+₦25.00</p>
+            <p className="text-sm font-semibold text-emerald-600">+₦1,000.00</p>
           </div>
         ))}
       </div>

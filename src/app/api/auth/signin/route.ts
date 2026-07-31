@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { signAccessToken } from '@/lib/auth/jwt';
 import { accessCookieOptions, refreshCookieOptions, ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth/session';
 import { logAnalyticsEvent } from '@/lib/analytics';
+import { syncInvestmentOnLogin } from '@/lib/investmentReturns';
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,6 +50,15 @@ export async function POST(req: NextRequest) {
     });
 
     await logAnalyticsEvent('signin');
+
+    // Catch this user up on any daily investment returns (and expire their
+    // package if it's run out) right as they log in, rather than waiting on
+    // an external cron.
+    try {
+      await syncInvestmentOnLogin(userDoc.id);
+    } catch (err) {
+      console.error('[signin] investment returns sync failed:', err);
+    }
 
     const res = NextResponse.json({
       user: { uid: userDoc.id, fullName: user.fullName, email: user.email, username: user.username }

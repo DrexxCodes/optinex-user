@@ -7,7 +7,8 @@ import PackageCard from './components/PackageCard';
 import PaymentDialog from './components/PaymentDialog';
 
 export default function InvestmentPage() {
-  const { packages, bank, latestRequest, loading, refresh, submitReceipt } = useInvestment();
+  const { packages, bank, latestRequest, userPackage, canChangePackage, loading, refresh, submitReceipt } =
+    useInvestment();
   const [selected, setSelected] = useState<InvestmentPackage | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -28,9 +29,9 @@ export default function InvestmentPage() {
             <span className="text-xs font-bold">!</span>
           </div>
           <div>
-            <p className="text-sm font-semibold text-amber-900">Time-sensitive submission</p>
+            <p className="text-sm font-semibold text-amber-900">Users Please Note</p>
             <p className="mt-1 text-xs text-amber-800">
-              You have 30 minutes to upload your payment receipt after selecting a package. If you don&apos;t upload within this time, you&apos;ll need to wait 1 hour before trying again.
+              Please do not make payments using fintech apps like Opay, PalmPay, or Paga. Use only traditional banking methods to avoid reversals.
             </p>
           </div>
         </div>
@@ -64,7 +65,13 @@ export default function InvestmentPage() {
         )}
 
         {packages.map((pkg) => (
-          <PackageCard key={pkg.id} pkg={pkg} onPay={setSelected} />
+          <PackageCard
+            key={pkg.id}
+            pkg={pkg}
+            onPay={setSelected}
+            isCurrentPackage={!!userPackage?.packageId && userPackage.packageId === pkg.id}
+            canChange={!!canChangePackage}
+          />
         ))}
       </div>
 

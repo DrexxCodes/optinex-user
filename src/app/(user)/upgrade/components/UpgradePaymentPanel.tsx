@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Copy, Check, UploadCloud, Sparkles, Clock } from 'lucide-react';
-import { UploadButton } from '@/lib/uploadthing';
+import { Copy, Check, Clock } from 'lucide-react';
+import ReceiptUploader from '@/components/ReceiptUploader';
 import type { UpgradeBank } from '../lib/useUpgrade';
 
 const TIMER_STORAGE_KEY = 'upgrade_payment_timer';
@@ -33,23 +33,31 @@ export default function UpgradePaymentPanel({
   const [cooldownActive, setCooldownActive] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
-  // Initialize timer and cooldown on mount
+  // Initialize timer and cooldown on mount. This panel only mounts once the
+  // user clicks "Click here to upgrade", so if nothing is already running,
+  // that click is the initiation moment — start the 30-minute window now
+  // rather than waiting for the receipt upload to finish.
   useEffect(() => {
     const timerData = localStorage.getItem(TIMER_STORAGE_KEY);
     if (timerData) {
       const { expiresAt, cooldownExpiresAt } = JSON.parse(timerData);
       const now = Date.now();
-      
+
       if (cooldownExpiresAt && now < cooldownExpiresAt) {
         setCooldownActive(true);
         setCooldownRemaining(cooldownExpiresAt - now);
+        return;
       } else if (expiresAt && now < expiresAt) {
         setTimerActive(true);
         setTimeRemaining(expiresAt - now);
+        return;
       } else {
         localStorage.removeItem(TIMER_STORAGE_KEY);
       }
     }
+
+    startTimer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Timer countdown for payment timer
@@ -135,7 +143,7 @@ export default function UpgradePaymentPanel({
   return (
     <div className="glass-panel mt-5 rounded-3xl p-6 shadow-card">
       <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-500">
-        <Sparkles size={20} />
+        
       </span>
       <h2 className="mt-3 font-display text-base font-bold text-ink">Upgrade Your Account</h2>
       <p className="mt-1 text-sm text-ink/60">
@@ -180,30 +188,11 @@ export default function UpgradePaymentPanel({
             <Check size={16} /> Receipt uploaded
           </div>
         ) : (
-          <UploadButton
-            endpoint="paymentReceipt"
-            onClientUploadComplete={(res) => {
-              const url = res?.[0]?.url ?? null;
-              if (url) {
-                setReceiptUrl(url);
-                // Start timer when receipt is uploaded
-                startTimer();
-              }
-            }}
-            onUploadError={(e) => setError(e.message)}
+          <ReceiptUploader
             disabled={cooldownActive}
-            appearance={{
-              button:
-                'w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-200 bg-white/60 py-3 text-sm font-semibold text-brand-600 ut-uploading:opacity-60 disabled:opacity-50 disabled:cursor-not-allowed',
-              allowedContent: 'hidden'
-            }}
-            content={{
-              button: () => (
-                <span className="flex items-center gap-2">
-                  <UploadCloud size={16} /> {cooldownActive ? 'Upload locked' : 'Choose receipt'}
-                </span>
-              )
-            }}
+            disabledMessage="Upload locked"
+            onUploaded={setReceiptUrl}
+            onError={(msg) => setError(msg)}
           />
         )}
       </div>

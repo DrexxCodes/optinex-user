@@ -37,10 +37,11 @@ export default function PackageCard({
       )}
 
       <button
-        onClick={() => onPay(pkg)}
-        className="mt-4 w-full rounded-xl bg-brand-500 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600"
+        onClick={() => !isCurrentPackage && onPay(pkg)}
+        disabled={isCurrentPackage}
+        className="mt-4 w-full rounded-xl bg-brand-500 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/40 disabled:hover:bg-ink/10"
       >
-        {canChange && !isCurrentPackage ? 'Change to This Package' : isCurrentPackage ? 'Renew Package' : 'Pay & Subscribe'}
+        {isCurrentPackage ? 'Current Plan' : canChange ? 'Change to This Package' : 'Pay & Subscribe'}
       </button>
     </div>
   );

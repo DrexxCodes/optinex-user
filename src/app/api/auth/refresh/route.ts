@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { adminDb } from '@/lib/firebase/admin';
 import { signAccessToken } from '@/lib/auth/jwt';
 import { accessCookieOptions, ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth/session';
+import { syncInvestmentOnLogin } from '@/lib/investmentReturns';
 
 export async function POST(req: NextRequest) {
   const raw = req.cookies.get(REFRESH_COOKIE)?.value;
@@ -36,6 +37,15 @@ export async function POST(req: NextRequest) {
   // if all goes well
   const user = userSnap.data()!;
   const accessToken = await signAccessToken({ uid, email: user.email, username: user.username, deviceId });
+
+  // A refresh means the user just resumed a session — possibly after being
+  // away for days — so this is as good a "login" moment as sign-in itself
+  // for catching up on backlogged investment returns / expiring a package.
+  try {
+    await syncInvestmentOnLogin(uid);
+  } catch (err) {
+    console.error('[refresh] investment returns sync failed:', err);
+  }
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set(ACCESS_COOKIE, accessToken, accessCookieOptions());

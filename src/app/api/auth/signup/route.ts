@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { signAccessToken } from '@/lib/auth/jwt';
 import { accessCookieOptions, refreshCookieOptions, ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth/session';
 import { logAnalyticsEvent } from '@/lib/analytics';
+import { redis, REFERRAL_LEADERBOARD_KEY, REFERRAL_LEADERBOARD_NAMES_KEY } from '@/lib/redis';
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,12 +39,17 @@ export async function POST(req: NextRequest) {
     // Keys look like `optinex-a3f9k2` — compare lowercased/trimmed rather
     // than the old uppercase-hex assumption.
     let referredBy: string | null = null;
+    let referrerData: { fullName?: string; username?: string } | null = null;
     if (referralKey) {
       const referrerSnap = await usersRef.where('referralKey', '==', String(referralKey).trim().toLowerCase()).limit(1).get();
-      if (!referrerSnap.empty) referredBy = referrerSnap.docs[0].id;
+      if (!referrerSnap.empty) {
+        referredBy = referrerSnap.docs[0].id;
+        const r = referrerSnap.docs[0].data();
+        referrerData = { fullName: r.fullName, username: r.username };
+      }
     }
 
-    const REFERRAL_BONUS = 100;
+    const REFERRAL_BONUS = 2000;
     const passwordHash = await bcrypt.hash(password, 10);
 
     const userRef = usersRef.doc();
@@ -87,7 +93,22 @@ export async function POST(req: NextRequest) {
 
     await batch.commit();
 
-    if (referredBy) await logAnalyticsEvent('referral_bonus', REFERRAL_BONUS);
+    if (referredBy) {
+      await logAnalyticsEvent('referral_bonus', REFERRAL_BONUS);
+
+      // Bump the referrer's score on the referral leaderboard. This is cache-only
+      // (not the source of truth — that's the `referredBy` field on each user doc,
+      // which /api/referral already counts) so a Redis hiccup here should never
+      // block or fail the signup itself.
+      try {
+        await redis.zincrby(REFERRAL_LEADERBOARD_KEY, 1, referredBy);
+        await redis.hset(REFERRAL_LEADERBOARD_NAMES_KEY, {
+          [referredBy]: JSON.stringify({ fullName: referrerData?.fullName ?? 'Optinex user', username: referrerData?.username ?? '' })
+        });
+      } catch (err) {
+        console.error('[signup] referral leaderboard update failed:', err);
+      }
+    }
 
     await logAnalyticsEvent('signup');
 

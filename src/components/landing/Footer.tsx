@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { Twitter, Instagram, Facebook, Linkedin } from 'lucide-react';
 
@@ -24,10 +25,7 @@ export default function Footer() {
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
             <Link href="#home" className="flex items-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand-500 font-display text-sm font-bold text-white">
-                O
-              </span>
-              <span className="font-display text-lg font-bold text-ink">Optinex</span>
+              <Image src="/logo.png" alt="Optinex Africa" width={140} height={38} />
             </Link>
             <p className="mt-4 max-w-xs font-body text-sm leading-relaxed text-ink/50">
               Earn from reviews, connections, and talent sharing — and withdraw straight to your

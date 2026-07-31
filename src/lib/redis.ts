@@ -11,3 +11,10 @@ export const redis = new Redis({
 export const LEADERBOARD_KEY = 'casino:leaderboard';
 // Hash mapping uid -> username, kept in sync so the leaderboard never needs a Firestore join.
 export const LEADERBOARD_NAMES_KEY = 'casino:usernames';
+
+// Sorted set of referral counts: member = uid (the referrer), score = number of
+// successful referrals. Incremented once per valid referral at signup time.
+export const REFERRAL_LEADERBOARD_KEY = 'referral:leaderboard';
+// Hash mapping uid -> JSON.stringify({ fullName, username }), kept in sync so the
+// leaderboard never needs a Firestore join to render names.
+export const REFERRAL_LEADERBOARD_NAMES_KEY = 'referral:names';

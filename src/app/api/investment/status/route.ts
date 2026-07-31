@@ -27,6 +27,7 @@ export async function GET() {
     bank: bank ? { bankName: bank.bankName, accountNumber: bank.accountNumber, accountName: bank.accountName } : null,
     latestRequest: latest,
     packageStatus: user.packageStatus ?? 'Free',
+    packageId: user.packageId ?? null,
     packageName: user.packageName,
     isChangingPackage: user.isChangingPackage ?? false
   });

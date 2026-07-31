@@ -4,6 +4,7 @@ import { useReferral } from './lib/useReferral';
 import ReferralKeyCard from './components/ReferralKeyCard';
 import ReferralStats from './components/ReferralStats';
 import ReferredUsersList from './components/ReferredUsersList';
+import ReferralLeaderboard from './components/ReferralLeaderboard';
 
 export default function ReferralPage() {
   const { state, loading, generating, error, generate } = useReferral();
@@ -29,6 +30,8 @@ export default function ReferralPage() {
           )}
         </>
       )}
+
+      <ReferralLeaderboard />
     </div>
   );
 }

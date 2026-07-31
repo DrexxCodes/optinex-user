@@ -1,11 +1,16 @@
 'use client';
 
+import { useState } from 'react';
+// import {   } from 'lucide-react';
 import { useUpgrade } from './lib/useUpgrade';
 import UpgradeStatusCard from './components/UpgradeStatusCard';
 import UpgradePaymentPanel from './components/UpgradePaymentPanel';
 
 export default function UpgradePage() {
   const { price, bank, accountTier, upgradeStatus, latestRequest, loading, submitReceipt } = useUpgrade();
+  const [started, setStarted] = useState(false);
+
+  const canUpgrade = accountTier !== 'upgraded' && upgradeStatus !== 'pending';
 
   return (
     <div className="px-4 pt-4 lg:max-w-3xl lg:px-0 lg:pt-2">
@@ -18,9 +23,9 @@ export default function UpgradePage() {
             <span className="text-xs font-bold">!</span>
           </div>
           <div>
-            <p className="text-sm font-semibold text-amber-900">Time-sensitive submission</p>
+            <p className="text-sm font-semibold text-amber-900">Users Please Note</p>
             <p className="mt-1 text-xs text-amber-800">
-              You have 30 minutes to upload your payment receipt after initiating an upgrade. If you don&apos;t upload within this time, you&apos;ll need to wait 1 hour before trying again.
+              Please do not make payments using fintech apps like Opay, PalmPay, or Paga. Use only traditional banking methods to avoid reversals.
             </p>
           </div>
         </div>
@@ -34,9 +39,16 @@ export default function UpgradePage() {
             <UpgradeStatusCard accountTier={accountTier} upgradeStatus={upgradeStatus} amount={latestRequest?.amount} />
           </div>
 
-          {accountTier !== 'upgraded' && upgradeStatus !== 'pending' && (
-            <UpgradePaymentPanel price={price} bank={bank} onSubmit={submitReceipt} />
+          {canUpgrade && !started && (
+            <button
+              onClick={() => setStarted(true)}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-500 py-3.5 text-sm font-semibold text-white shadow-card transition hover:bg-brand-600"
+            >
+              Click here to upgrade
+            </button>
           )}
+
+          {canUpgrade && started && <UpgradePaymentPanel price={price} bank={bank} onSubmit={submitReceipt} />}
         </>
       )}
     </div>
