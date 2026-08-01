@@ -21,7 +21,7 @@ export default function InvestmentPage() {
   return (
     <div className="px-4 pt-4 lg:max-w-3xl lg:px-0 lg:pt-2">
       <h1 className="font-display text-xl font-bold text-ink">Investment Packages</h1>
-      <p className="mt-1 text-sm text-ink/60">Every account starts on Free — subscribe to unlock withdrawals.</p>
+      <p className="mt-1 text-sm text-ink/60">Every account starts on Free, subscribe to unlock withdrawals.</p>
 
       <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
         <div className="flex gap-3">
@@ -31,7 +31,7 @@ export default function InvestmentPage() {
           <div>
             <p className="text-sm font-semibold text-amber-900">Users Please Note</p>
             <p className="mt-1 text-xs text-amber-800">
-              Please do not make payments using fintech apps like Opay, PalmPay, or Paga. Use only traditional banking methods to avoid reversals.
+              Please do not make payments using Opay. Use only traditional banking methods to avoid reversals.
             </p>
           </div>
         </div>

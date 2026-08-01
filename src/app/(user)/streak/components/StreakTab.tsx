@@ -9,7 +9,7 @@ export default function StreakTab() {
 
   return (
     <div>
-      <p className="mt-1 text-center text-sm text-ink/60">Check in once every 24 hours for a ₦25.00 reward.</p>
+      <p className="mt-1 text-center text-sm text-ink/60">Check in once every 24 hours for a ₦1,000.00 reward.</p>
 
       {loading && <div className="mx-auto mt-10 h-56 w-56 animate-pulse rounded-full bg-white/40" />}
 

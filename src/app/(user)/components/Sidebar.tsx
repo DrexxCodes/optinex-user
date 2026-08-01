@@ -38,7 +38,7 @@ export default function Sidebar() {
       </nav>
 
       <div className="glass-panel rounded-2xl p-4 text-xs leading-relaxed text-ink/60">
-        Optimise your wealth — earn daily, complete tasks, and grow with Optinex Africa.
+        Optimise your wealth by earning daily, completing tasks, and growing with Optinex Africa.
       </div>
     </aside>
   );

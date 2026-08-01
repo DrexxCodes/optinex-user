@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Link2, Share2, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, Link2, Share2, Users } from 'lucide-react';
 import { useReferral, referralLink } from '../../referral/lib/useReferral';
 import { useClipboard } from '../../lib/useClipboard';
 
@@ -17,9 +17,6 @@ export default function ReferralSummaryCard() {
       <div className="glass-panel mt-6 rounded-3xl p-5 shadow-card">
         <h2 className="font-display text-sm font-bold text-ink">Referral</h2>
         <div className="mt-3 flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-500">
-            <Sparkles size={16} />
-          </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-ink">You don't have a referral link yet</p>
             <p className="mt-0.5 text-xs text-ink/50">Create one and start earning when friends join.</p>

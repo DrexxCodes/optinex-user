@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { redis, REFERRAL_LEADERBOARD_KEY, REFERRAL_LEADERBOARD_NAMES_KEY } from '@/lib/redis';
+import { adminDb } from '@/lib/firebase/admin';
 
 export type LeaderboardEntry = {
   uid: string;
@@ -32,6 +33,43 @@ export async function GET() {
     const names =
       uids.length > 0 ? await redis.hmget<Record<string, string>>(REFERRAL_LEADERBOARD_NAMES_KEY, ...uids) : {};
 
+    // The Redis name cache is best-effort (written at signup time, and only
+    // going back to when that caching was added), so any uid missing a
+    // usable entry there falls back to Firestore — the actual source of
+    // truth for a user's name — instead of a generic placeholder. This is
+    // also what backfills the cache for next time, so it self-heals.
+    const missingUids = uids.filter((uid) => {
+      const cached = names?.[uid];
+      if (!cached) return true;
+      try {
+        const parsed = JSON.parse(cached as string);
+        return !parsed.fullName;
+      } catch {
+        return true;
+      }
+    });
+
+    const fetchedNames = new Map<string, { fullName: string; username: string }>();
+    if (missingUids.length > 0) {
+      const snaps = await Promise.all(missingUids.map((uid) => adminDb.collection('users').doc(uid).get()));
+      for (const snap of snaps) {
+        if (!snap.exists) continue;
+        const d = snap.data()!;
+        const entry = { fullName: d.fullName ?? 'Optinex user', username: d.username ?? '' };
+        fetchedNames.set(snap.id, entry);
+      }
+      // Backfill the cache so we don't have to hit Firestore for these again.
+      if (fetchedNames.size > 0) {
+        try {
+          const hsetPayload: Record<string, string> = {};
+          for (const [uid, entry] of fetchedNames) hsetPayload[uid] = JSON.stringify(entry);
+          await redis.hset(REFERRAL_LEADERBOARD_NAMES_KEY, hsetPayload);
+        } catch (err) {
+          console.error('[referral/leaderboard] name cache backfill failed:', err);
+        }
+      }
+    }
+
     const leaderboard: LeaderboardEntry[] = top.map((entry, i) => {
       let fullName = 'Optinex user';
       let username = '';
@@ -39,11 +77,18 @@ export async function GET() {
       if (raw) {
         try {
           const parsed = JSON.parse(raw as string);
-          fullName = parsed.fullName ?? fullName;
-          username = parsed.username ?? username;
+          if (parsed.fullName) {
+            fullName = parsed.fullName;
+            username = parsed.username ?? username;
+          }
         } catch {
-          // ignore malformed cache entries
+          // ignore malformed cache entries, fall through to Firestore lookup below
         }
+      }
+      const fetched = fetchedNames.get(entry.member);
+      if (fetched) {
+        fullName = fetched.fullName;
+        username = fetched.username;
       }
       return { uid: entry.member, fullName, username, referrals: entry.score, rank: i + 1 };
     });

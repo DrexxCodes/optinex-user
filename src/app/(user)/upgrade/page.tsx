@@ -25,7 +25,7 @@ export default function UpgradePage() {
           <div>
             <p className="text-sm font-semibold text-amber-900">Users Please Note</p>
             <p className="mt-1 text-xs text-amber-800">
-              Please do not make payments using fintech apps like Opay, PalmPay, or Paga. Use only traditional banking methods to avoid reversals.
+              Please do not make payments using Opay. Use only traditional banking methods to avoid reversals.
             </p>
           </div>
         </div>

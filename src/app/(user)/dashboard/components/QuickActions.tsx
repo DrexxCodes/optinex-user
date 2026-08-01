@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Flame, ListChecks, Gamepad2, TrendingUp } from 'lucide-react';
 
 const ACTIONS = [
-  { href: '/streak', label: 'Daily Check-in', hint: '+₦25 today', icon: Flame, tint: 'bg-orange-50 text-orange-500' },
+  { href: '/streak', label: 'Daily Check-in', hint: '+₦1000 today', icon: Flame, tint: 'bg-orange-50 text-orange-500' },
   { href: '/tasks', label: 'Tasks', hint: 'Earn more', icon: ListChecks, tint: 'bg-brand-50 text-brand-500' },
   { href: '/casino', label: 'Brick Slasher', hint: 'Play & rank', icon: Gamepad2, tint: 'bg-sky-50 text-sky-500' },
   { href: '/investment', label: 'Packages', hint: 'Grow faster', icon: TrendingUp, tint: 'bg-emerald-50 text-emerald-500' }
