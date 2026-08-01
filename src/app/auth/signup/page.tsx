@@ -21,7 +21,7 @@ function SignUpForm() {
   const [loading, setLoading] = useState(false);
 
   const onChange = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [key]: e.target.value }));
+    setForm((f) => ({ ...f, [key]: key === 'username' ? e.target.value.toLowerCase() : e.target.value }));
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
