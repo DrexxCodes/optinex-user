@@ -17,7 +17,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { generateReference } from '@/lib/refGenerator';
 import { cacheGet, cacheSet } from '@/app/lib/redis';
 
-const DAILY_RETURN_PERCENTAGE = 2; // 2% of the package price, per day
+const DAILY_RETURN_PERCENTAGE = 10; // 10% of the package price, per day
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const CACHE_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days — comfortably longer than any realistic backlog
 const MAX_BACKLOG_DAYS = 90; // defensive cap so a bad timestamp can't create thousands of transactions
