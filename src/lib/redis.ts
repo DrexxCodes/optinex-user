@@ -7,10 +7,28 @@ export const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!
 });
 
-// Sorted set of all-time high scores: member = uid, score = high score.
-export const LEADERBOARD_KEY = 'casino:leaderboard';
-// Hash mapping uid -> username, kept in sync so the leaderboard never needs a Firestore join.
-export const LEADERBOARD_NAMES_KEY = 'casino:usernames';
+// Casino now hosts 4 games, each with its own leaderboard. Keys are namespaced
+// per game so scores never mix across games.
+export const CASINO_GAME_IDS = ['brick-slasher', 'reaction-tap', 'stack-tower', 'endless-runner'] as const;
+export type CasinoGameId = (typeof CASINO_GAME_IDS)[number];
+
+// Sorted set of all-time high scores for one game: member = uid, score = high score.
+export function gameLeaderboardKey(gameId: CasinoGameId) {
+  return `casino:leaderboard:${gameId}`;
+}
+// Hash mapping uid -> username for one game, kept in sync so the leaderboard
+// never needs a Firestore join.
+export function gameLeaderboardNamesKey(gameId: CasinoGameId) {
+  return `casino:usernames:${gameId}`;
+}
+
+// Pre-refactor keys — Brick Slasher was the only game and used these
+// unnamespaced keys directly. Kept only so the one-off migration script
+// (scripts/migrate-casino-leaderboard.ts) can move existing players' scores
+// onto `gameLeaderboardKey('brick-slasher')` without losing them. Don't read
+// or write these directly anywhere else.
+export const LEGACY_LEADERBOARD_KEY = 'casino:leaderboard';
+export const LEGACY_LEADERBOARD_NAMES_KEY = 'casino:usernames';
 
 // Sorted set of referral counts: member = uid (the referrer), score = number of
 // successful referrals. Incremented once per valid referral at signup time.

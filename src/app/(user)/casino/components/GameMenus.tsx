@@ -1,10 +1,18 @@
 import { Play, RotateCcw } from 'lucide-react';
 
-export function MainMenu({ onStart }: { onStart: () => void }) {
+export function MainMenu({
+  onStart,
+  title,
+  subtitle
+}: {
+  onStart: () => void;
+  title: string;
+  subtitle: string;
+}) {
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 rounded-3xl bg-ink/70 backdrop-blur-sm">
-      <h2 className="font-display text-2xl font-bold text-white">Brick Slasher</h2>
-      <p className="max-w-[220px] text-center text-sm text-white/70">Swipe across the cubes and avoid the bombs!</p>
+      <h2 className="font-display text-2xl font-bold text-white">{title}</h2>
+      <p className="max-w-[220px] text-center text-sm text-white/70">{subtitle}</p>
       <button
         onClick={onStart}
         className="flex items-center gap-2 rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white"

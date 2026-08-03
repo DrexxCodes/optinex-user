@@ -4,19 +4,21 @@ import { useEffect, useState } from 'react';
 import { Trophy } from 'lucide-react';
 import { authFetch } from '@/lib/auth/authClient';
 
+import type { GameId } from '../games';
+
 type Entry = { rank: number; username: string; score: number };
 
-export default function Leaderboard({ refreshKey }: { refreshKey: number }) {
+export default function Leaderboard({ gameId, refreshKey }: { gameId: GameId; refreshKey: number }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    authFetch('/api/casino/leaderboard')
+    authFetch(`/api/casino/leaderboard?game=${gameId}`)
       .then((res) => (res.ok ? res.json() : { leaderboard: [] }))
       .then((data) => setEntries(data.leaderboard))
       .finally(() => setLoading(false));
-  }, [refreshKey]);
+  }, [gameId, refreshKey]);
 
   return (
     <div className="mt-6">
