@@ -13,7 +13,7 @@ export class EndlessRunnerEngine extends BaseCanvasEngine<GameState> {
   private charY = 0;
   private vy = 0;
   private grounded = true;
-  private speed = CFG.speedStart;
+  private speed: number = CFG.speedStart;
   private obstaclesPassed = 0;
   private nextSpawnAt = 0;
 

@@ -14,7 +14,7 @@ export class StackTowerEngine extends BaseCanvasEngine<StackTowerState> {
   private movingX = 0;
   private movingWidth = 0;
   private movingDir = 1;
-  private speed = CFG.speedStart;
+  private speed: number = CFG.speedStart;
 
   constructor(canvas: HTMLCanvasElement, callbacks: EngineCallbacks) {
     super(canvas, callbacks, { ...initialState });
@@ -64,7 +64,7 @@ export class StackTowerEngine extends BaseCanvasEngine<StackTowerState> {
     this.state.score += CFG.baseScore + (isPerfect ? CFG.perfectBonus * (1 + this.state.combo * 0.1) : 0);
     this.emitState();
 
-    this.speed = Math.min(CFG.speedMax, CFG.speedStart + layerIndex * CFG.speedRampPerLayer);
+    this.speed = Math.min(CFG.speedMax as number, CFG.speedStart + layerIndex * CFG.speedRampPerLayer);
     this.spawnMovingBlock();
   }
 
