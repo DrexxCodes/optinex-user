@@ -37,10 +37,6 @@ export default function Hero() {
               See how it works
             </a>
           </div>
-
-          <p className="mt-8 font-body text-xs text-ink/40">
-            Free to join · No hidden charges · Withdraw any amount, any time
-          </p>
         </div>
 
         {/* Balance card */}

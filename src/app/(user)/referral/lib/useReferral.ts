@@ -62,12 +62,13 @@ export type LeaderboardEntry = {
   fullName: string;
   username: string;
   referrals: number;
+  totalEarned: number;
   rank: number;
 };
 
 export type LeaderboardState = {
   leaderboard: LeaderboardEntry[];
-  you: { rank: number; referrals: number } | null;
+  you: { rank: number; referrals: number; totalEarned: number } | null;
 };
 
 export function useReferralLeaderboard() {

@@ -6,7 +6,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { signAccessToken } from '@/lib/auth/jwt';
 import { accessCookieOptions, refreshCookieOptions, ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth/session';
 import { logAnalyticsEvent } from '@/lib/analytics';
-import { redis, REFERRAL_LEADERBOARD_KEY, REFERRAL_LEADERBOARD_NAMES_KEY } from '@/lib/redis';
+import { redis, REFERRAL_LEADERBOARD_KEY, REFERRAL_WEEKLY_LEADERBOARD_KEY, REFERRAL_LEADERBOARD_NAMES_KEY } from '@/lib/redis';
 
 export async function POST(req: NextRequest) {
   try {
@@ -68,6 +68,8 @@ export async function POST(req: NextRequest) {
       admin: false,
       referralKey: null, // generated on demand from the Referral page
       referralEarnings: 0,
+      weeklyReferrals: 0, // resets every week from the admin Referrals page
+      allTimeReferrals: 0, // never reset — feeds the admin leaderboard's all-time column
       referredBy,
       accountTier: 'standard',
       upgradeStatus: 'none',
@@ -81,7 +83,19 @@ export async function POST(req: NextRequest) {
     // referrer's activity feed like any other credit.
     if (referredBy) {
       const referrerRef = usersRef.doc(referredBy);
-      batch.set(referrerRef, { walletAmount: FieldValue.increment(REFERRAL_BONUS), referralEarnings: FieldValue.increment(REFERRAL_BONUS) }, { merge: true });
+      batch.set(
+        referrerRef,
+        {
+          walletAmount: FieldValue.increment(REFERRAL_BONUS),
+          referralEarnings: FieldValue.increment(REFERRAL_BONUS),
+          // Feeds the admin Referrals leaderboard (₦1,000/referral there, independent
+          // of the REFERRAL_BONUS actually paid into the wallet above). weeklyReferrals
+          // is zeroed by the admin's weekly reset; allTimeReferrals is never touched.
+          weeklyReferrals: FieldValue.increment(1),
+          allTimeReferrals: FieldValue.increment(1)
+        },
+        { merge: true }
+      );
       batch.set(referrerRef.collection('walletTransactions').doc(), {
         txnType: 'credit',
         txnName: 'Referral bonus',
@@ -102,6 +116,7 @@ export async function POST(req: NextRequest) {
       // block or fail the signup itself.
       try {
         await redis.zincrby(REFERRAL_LEADERBOARD_KEY, 1, referredBy);
+        await redis.zincrby(REFERRAL_WEEKLY_LEADERBOARD_KEY, 1, referredBy);
         await redis.hset(REFERRAL_LEADERBOARD_NAMES_KEY, {
           [referredBy]: JSON.stringify({ fullName: referrerData?.fullName ?? 'Optinex user', username: referrerData?.username ?? '' })
         });

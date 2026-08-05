@@ -32,7 +32,7 @@ export default function ReferralLeaderboard() {
       {you && (
         <p className="mt-1 text-xs text-ink/60">
           Your rank is <span className="font-semibold text-brand-500">#{you.rank}</span> with {you.referrals}{' '}
-          {you.referrals === 1 ? 'referral' : 'referrals'}.
+          {you.referrals === 1 ? 'referral' : 'referrals'} · ₦{you.totalEarned.toLocaleString('en-NG')} earned.
         </p>
       )}
 
@@ -57,7 +57,10 @@ export default function ReferralLeaderboard() {
                   {entry.username && <p className="text-xs text-ink/50">@{entry.username}</p>}
                 </div>
               </div>
-              <span className="text-sm font-semibold text-brand-500">{entry.referrals}</span>
+              <div className="text-right">
+                <p className="text-sm font-semibold text-brand-500">{entry.referrals}</p>
+                <p className="text-xs text-ink/45">₦{entry.totalEarned.toLocaleString('en-NG')}</p>
+              </div>
             </div>
           ))}
         </div>

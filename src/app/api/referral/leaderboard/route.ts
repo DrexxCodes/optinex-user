@@ -8,6 +8,7 @@ export type LeaderboardEntry = {
   fullName: string;
   username: string;
   referrals: number;
+  totalEarned: number;
   rank: number;
 };
 
@@ -70,6 +71,19 @@ export async function GET() {
       }
     }
 
+    // How much each referrer has actually earned from people using their key.
+    // Not cacheable like names (it changes on every new signup), so every uid
+    // on the board gets a read here — plus the logged-in user, for `you`,
+    // whether or not they're in the current top 10.
+    const earningsUids = Array.from(new Set(session.uid ? [...uids, session.uid] : uids));
+    const earningsMap = new Map<string, number>();
+    if (earningsUids.length > 0) {
+      const earningsSnaps = await adminDb.getAll(...earningsUids.map((uid) => adminDb.collection('users').doc(uid)));
+      for (const snap of earningsSnaps) {
+        if (snap.exists) earningsMap.set(snap.id, snap.data()?.referralEarnings ?? 0);
+      }
+    }
+
     const leaderboard: LeaderboardEntry[] = top.map((entry, i) => {
       let fullName = 'Optinex user';
       let username = '';
@@ -90,7 +104,14 @@ export async function GET() {
         fullName = fetched.fullName;
         username = fetched.username;
       }
-      return { uid: entry.member, fullName, username, referrals: entry.score, rank: i + 1 };
+      return {
+        uid: entry.member,
+        fullName,
+        username,
+        referrals: entry.score,
+        totalEarned: earningsMap.get(entry.member) ?? 0,
+        rank: i + 1
+      };
     });
 
     // Where does the logged-in user sit? Only meaningful if they've made at
@@ -102,7 +123,7 @@ export async function GET() {
 
     const you =
       yourRank !== null && yourRank !== undefined
-        ? { rank: yourRank + 1, referrals: yourScore ?? 0 }
+        ? { rank: yourRank + 1, referrals: yourScore ?? 0, totalEarned: earningsMap.get(session.uid) ?? 0 }
         : null;
 
     return NextResponse.json({ leaderboard, you });
