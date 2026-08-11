@@ -41,8 +41,10 @@ export async function POST(req: NextRequest) {
   // A refresh means the user just resumed a session — possibly after being
   // away for days — so this is as good a "login" moment as sign-in itself
   // for catching up on backlogged investment returns / expiring a package.
+  // Pass the user data already fetched above (Promise.all) to skip a
+  // second, redundant Firestore read of the same doc.
   try {
-    await syncInvestmentOnLogin(uid);
+    await syncInvestmentOnLogin(uid, user);
   } catch (err) {
     console.error('[refresh] investment returns sync failed:', err);
   }

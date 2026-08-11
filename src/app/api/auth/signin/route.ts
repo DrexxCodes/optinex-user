@@ -53,9 +53,10 @@ export async function POST(req: NextRequest) {
 
     // Catch this user up on any daily investment returns (and expire their
     // package if it's run out) right as they log in, rather than waiting on
-    // an external cron.
+    // an external cron. Pass the user data we already fetched above so this
+    // doesn't cost a second, redundant Firestore read of the same doc.
     try {
-      await syncInvestmentOnLogin(userDoc.id);
+      await syncInvestmentOnLogin(userDoc.id, user);
     } catch (err) {
       console.error('[signin] investment returns sync failed:', err);
     }

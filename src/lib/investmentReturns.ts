@@ -4,13 +4,16 @@
 //
 // Flow for a given user:
 //   1. Bail out fast if they're on the Free plan or have no package.
-//   2. Look up the package's price to get the 2%/day return amount.
-//   3. Figure out where we left off — Redis first (fast path), falling back to
-//      the `lastInvestmentReturnAt` field on the user doc if the cache is cold
-//      (e.g. it expired, or this is the very first run).
-//   4. Credit one walletTransactions entry per missed day, capped at the
-//      package's expiry, so someone who hasn't opened the app in a few days
-//      gets their full backlog in one go instead of losing it.
+//   2. Look up the package's price to get the 10%/day return amount.
+//   3. Figure out where we left off — Redis first (fast path). If Redis has
+//      nothing (cold cache, expired TTL, first run ever), fall back to the
+//      `lastInvestmentReturnAt` field on the user doc (or `packageStartedAt`
+//      for a brand new package), and immediately write that value back to
+//      Redis so the cache is warm again regardless of whether there's any
+//      backlog to pay this run.
+//   4. Credit one walletTransactions entry per missed day, capped at
+//      MAX_BACKLOG_DAYS (10) and at the package's own expiry — whichever is
+//      sooner. Backlog older than 10 days is forfeited, not paid.
 //   5. If the package has expired, flip the user back to the Free plan.
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase/admin';
@@ -20,7 +23,7 @@ import { cacheGet, cacheSet } from '@/app/lib/redis';
 const DAILY_RETURN_PERCENTAGE = 10; // 10% of the package price, per day
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const CACHE_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days — comfortably longer than any realistic backlog
-const MAX_BACKLOG_DAYS = 90; // defensive cap so a bad timestamp can't create thousands of transactions
+const MAX_BACKLOG_DAYS = 10; // any backlog beyond this is forfeited, not paid
 
 function lastReturnCacheKey(uid: string) {
   return `investment:lastReturn:${uid}`;
@@ -37,13 +40,30 @@ export type SyncResult =
  * sign-in, and again on access-token refresh so returning users who kept a
  * session open get caught up too. Safe to call often; it's a no-op once a
  * user is already paid up to date.
+ *
+ * `preloadedUser` is an optional escape hatch: if the caller already fetched
+ * this user's doc moments ago (signin and refresh both do, to check the
+ * password/token), pass that data in here to skip a second, redundant
+ * Firestore read of the same doc. Only safe when nothing has written to the
+ * user doc between that fetch and this call — which holds for signin and
+ * refresh today. Omit it (or call with just `uid`) to fetch fresh, e.g. from
+ * a cron job or admin tool where no recent read exists to reuse.
  */
-export async function syncInvestmentOnLogin(uid: string): Promise<SyncResult> {
+export async function syncInvestmentOnLogin(
+  uid: string,
+  preloadedUser?: FirebaseFirestore.DocumentData
+): Promise<SyncResult> {
   const userRef = adminDb.collection('users').doc(uid);
-  const userSnap = await userRef.get();
-  if (!userSnap.exists) return { status: 'no-package' };
 
-  const user = userSnap.data()!;
+  let user: FirebaseFirestore.DocumentData;
+  if (preloadedUser) {
+    user = preloadedUser;
+  } else {
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) return { status: 'no-package' };
+    user = userSnap.data()!;
+  }
+
   if (!user.packageId || user.packageStatus === 'Free') {
     return { status: 'no-package' };
   }
@@ -62,18 +82,30 @@ export async function syncInvestmentOnLogin(uid: string): Promise<SyncResult> {
   // Never credit returns past the package's own expiry date.
   const effectiveEnd = expiresAt !== null ? Math.min(now, expiresAt) : now;
 
-  // Where did we last leave off? Redis first, then the Firestore fallback,
-  // then the package's own start date for a brand new package.
+  // Where did we last leave off? Redis first (fast path). If Redis has
+  // nothing for this user — cold cache, expired TTL, or Redis hiccup — fall
+  // back to Firestore, which we already confirmed above has an active
+  // package. Whatever we resolve from Firestore gets written straight back
+  // to Redis so the fast path is warm again for the next call, independent
+  // of whether there's any backlog to actually pay out this run.
   const cachedLast = await cacheGet<number>(lastReturnCacheKey(uid));
   let lastReturnAt: number;
   if (cachedLast != null) {
     lastReturnAt = cachedLast;
   } else {
     lastReturnAt = user.lastInvestmentReturnAt ?? user.packageStartedAt ?? now;
+    await cacheSet(lastReturnCacheKey(uid), lastReturnAt, CACHE_TTL_SECONDS);
   }
 
+  // Backlog is capped at MAX_BACKLOG_DAYS — anything older than that is
+  // forfeited (not paid), and lastReturnAt is fast-forwarded to match so we
+  // don't keep re-evaluating the forfeited days on every future call.
   let daysElapsed = Math.floor((effectiveEnd - lastReturnAt) / MS_PER_DAY);
-  if (daysElapsed > MAX_BACKLOG_DAYS) daysElapsed = MAX_BACKLOG_DAYS;
+  if (daysElapsed > MAX_BACKLOG_DAYS) {
+    const forfeitedDays = daysElapsed - MAX_BACKLOG_DAYS;
+    lastReturnAt += forfeitedDays * MS_PER_DAY;
+    daysElapsed = MAX_BACKLOG_DAYS;
+  }
 
   let totalCredited = 0;
 
