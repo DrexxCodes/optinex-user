@@ -35,7 +35,7 @@ export default function Ecosystem() {
             An ecosystem built around your time
           </h2>
           <p className="mt-4 font-body text-base leading-relaxed text-ink/60">
-            Every part of Optinex is designed to turn small, everyday effort into earnings you
+            Every part of Incossify is designed to turn small, everyday effort into earnings you
             can actually see and use.
           </p>
         </div>

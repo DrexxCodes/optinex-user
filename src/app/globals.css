@@ -33,7 +33,7 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(244, 248, 255, 0.4) 0%, rgba(244, 248, 255, 0.62) 55%, rgba(244, 248, 255, 0.78) 100%);
+  background: linear-gradient(180deg, rgba(249, 244, 255, 0.4) 0%, rgba(249, 244, 255, 0.62) 55%, rgba(249, 244, 255, 0.78) 100%);
 }
 
 /* Distinct backdrop used only on the auth (sign in / sign up) screens */
@@ -52,7 +52,7 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(8, 26, 86, 0.55) 0%, rgba(10, 31, 60, 0.82) 100%);
+  background: linear-gradient(180deg, rgba(44, 3, 48, 0.55) 0%, rgba(26, 5, 51, 0.82) 100%);
 }
 
 .glass-panel {
@@ -70,7 +70,7 @@ body {
 }
 
 ::selection {
-  background: #1C54F5;
+  background: #9D0EB3;
   color: #fff;
 }
 

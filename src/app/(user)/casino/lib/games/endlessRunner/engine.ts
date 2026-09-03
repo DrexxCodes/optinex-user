@@ -101,7 +101,7 @@ export class EndlessRunnerEngine extends BaseCanvasEngine<GameState> {
     const w = this.width;
     const h = this.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#0A1F3C';
+    ctx.fillStyle = '#1A0533';
     ctx.fillRect(0, 0, w, h);
 
     // Ground line.
@@ -113,7 +113,7 @@ export class EndlessRunnerEngine extends BaseCanvasEngine<GameState> {
     ctx.stroke();
 
     // Runner.
-    ctx.fillStyle = '#4FD1F5';
+    ctx.fillStyle = '#C33ED9';
     ctx.beginPath();
     ctx.roundRect(
       CFG.runnerX - CFG.runnerSize / 2,

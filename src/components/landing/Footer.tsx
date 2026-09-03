@@ -25,7 +25,7 @@ export default function Footer() {
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
             <Link href="#home" className="flex items-center gap-2">
-              <Image src="/logo.png" alt="Optinex Africa" width={140} height={38} />
+              <Image src="/logo.png" alt="Incossify Africa" width={140} height={38} />
             </Link>
             <p className="mt-4 max-w-xs font-body text-sm leading-relaxed text-ink/50">
               Earn from reviews, connections, and talent sharing — and withdraw straight to your
@@ -73,7 +73,7 @@ export default function Footer() {
 
         <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-ink/5 pt-8 sm:flex-row">
           <p className="font-body text-xs text-ink/40">
-            &copy; {new Date().getFullYear()} Optinex Africa. All rights reserved.
+            &copy; {new Date().getFullYear()} Incossify Africa. All rights reserved.
           </p>
           <div className="flex gap-6">
             <a href="#" className="font-body text-xs text-ink/40 hover:text-brand-600">

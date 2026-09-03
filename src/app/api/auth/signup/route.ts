@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Optional referral key: must match another user's own referral key.
-    // Keys look like `optinex-a3f9k2` — compare lowercased/trimmed rather
+    // Keys look like `incossify-a3f9k2` — compare lowercased/trimmed rather
     // than the old uppercase-hex assumption.
     let referredBy: string | null = null;
     let referrerData: { fullName?: string; username?: string } | null = null;
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
         await redis.zincrby(REFERRAL_LEADERBOARD_KEY, 1, referredBy);
         await redis.zincrby(REFERRAL_WEEKLY_LEADERBOARD_KEY, 1, referredBy);
         await redis.hset(REFERRAL_LEADERBOARD_NAMES_KEY, {
-          [referredBy]: JSON.stringify({ fullName: referrerData?.fullName ?? 'Optinex user', username: referrerData?.username ?? '' })
+          [referredBy]: JSON.stringify({ fullName: referrerData?.fullName ?? 'Incossify user', username: referrerData?.username ?? '' })
         });
       } catch (err) {
         console.error('[signup] referral leaderboard update failed:', err);

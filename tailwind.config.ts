@@ -5,22 +5,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Optinex Africa — Blue & White palette
-        ink: '#0A1F3C',        // deep navy — headings, primary text
+        // Incossify Africa — Purple & White palette
+        ink: '#1A0533',        // deep violet — headings, primary text
         brand: {
-          50: '#EAF1FF',
-          100: '#D6E4FF',
-          200: '#ADC8FF',
-          300: '#7FA4FF',
-          400: '#4A79FF',
-          500: '#1C54F5',      // primary blue
-          600: '#123FCB',
-          700: '#0E30A0',
-          800: '#0A2478',
-          900: '#081A56'
+          50: '#FBEAFC',
+          100: '#F3CEF7',
+          200: '#E59FEF',
+          300: '#D66FE6',
+          400: '#C33ED9',
+          500: '#9D0EB3',      // primary purple
+          600: '#7E0B8F',
+          700: '#61086C',
+          800: '#45064C',
+          900: '#2C0330'
         },
-        sky: '#4FD1F5',        // cyan accent — rewards / positive states
-        frost: '#F4F8FF',      // app background tint
+        sky: '#C33ED9',        // orchid accent — rewards / positive states
+        frost: '#F9F4FF',      // app background tint
         mist: 'rgba(255,255,255,0.6)'
       },
       fontFamily: {
@@ -31,8 +31,8 @@ const config: Config = {
         xs: '2px'
       },
       boxShadow: {
-        glass: '0 8px 32px rgba(10, 31, 60, 0.12)',
-        card: '0 2px 16px rgba(10, 31, 60, 0.08)'
+        glass: '0 8px 32px rgba(26, 5, 51, 0.12)',
+        card: '0 2px 16px rgba(26, 5, 51, 0.08)'
       },
       borderRadius: {
         '2xl': '1.25rem',

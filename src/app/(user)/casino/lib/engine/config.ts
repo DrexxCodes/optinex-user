@@ -20,9 +20,9 @@ export const CONFIG = {
   sparkLifeMs: 260,
   burstLifeMs: 520,
   colors: {
-    cube: ['#1C54F5', '#4FD1F5', '#0E30A0'],
-    bomb: '#0A1F3C',
-    burst: ['#FFFFFF', '#4FD1F5', '#1C54F5'],
+    cube: ['#9D0EB3', '#C33ED9', '#61086C'],
+    bomb: '#1A0533',
+    burst: ['#FFFFFF', '#C33ED9', '#9D0EB3'],
     spark: '#FFFFFF'
   }
 } as const;

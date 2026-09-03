@@ -34,7 +34,7 @@ export default function Navbar({ authenticated }: { authenticated: boolean }) {
     >
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link href="#home" className="flex items-center gap-2">
-          <Image src="/logo.png" alt="Optinex Africa" width={140} height={38} priority />
+          <Image src="/logo.png" alt="Incossify Africa" width={140} height={38} priority />
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">

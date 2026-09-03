@@ -95,8 +95,8 @@ export class ReactionTapEngine extends BaseCanvasEngine<ReactionTapState> {
         : this.state.phase === 'early'
           ? '#EF4444'
           : this.state.phase === 'result'
-            ? '#1C54F5'
-            : '#0A1F3C';
+            ? '#9D0EB3'
+            : '#1A0533';
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, width, height);
 

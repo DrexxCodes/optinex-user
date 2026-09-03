@@ -17,7 +17,7 @@ const FAQS = [
     a: 'Tasks range from product reviews to Talent Core submissions and network opportunities. Tasks are matched to your profile so what you see stays relevant.'
   },
   {
-    q: 'Is Optinex free to join?',
+    q: 'Is Incossify free to join?',
     a: 'Yes, creating an account and accessing tasks costs nothing. There are no hidden charges at any point.'
   }
 ];

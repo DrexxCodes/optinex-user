@@ -3,8 +3,8 @@ import { sora, inter } from './fonts';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Optinex Africa',
-  description: 'Earn, grow, and invest with Optinex.',
+  title: 'Incossify Africa',
+  description: 'Earn, grow, and invest with Incossify.',
   manifest: '/manifest.json',
   icons: {
     icon: '/icons/icon-192.png',
@@ -13,12 +13,12 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Optinex Africa'
+    title: 'Incossify Africa'
   }
 };
 
 export const viewport: Viewport = {
-  themeColor: '#1C54F5',
+  themeColor: '#9D0EB3',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,

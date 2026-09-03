@@ -15,7 +15,7 @@ export default function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 shrink-0 flex-col border-r border-white/60 bg-white/50 px-5 py-7 backdrop-blur-xl lg:flex">
       <Link href="/dashboard" className="px-1">
-        <Image src="/logo.png" alt="Optinex Africa" width={148} height={40} priority />
+        <Image src="/logo.png" alt="Incossify Africa" width={148} height={40} priority />
       </Link>
 
       <nav className="mt-10 flex flex-1 flex-col gap-1">
@@ -38,7 +38,7 @@ export default function Sidebar() {
       </nav>
 
       <div className="glass-panel rounded-2xl p-4 text-xs leading-relaxed text-ink/60">
-        Optimise your wealth by earning daily, completing tasks, and growing with Optinex Africa.
+        Optimise your wealth by earning daily, completing tasks, and growing with Incossify Africa.
       </div>
     </aside>
   );

@@ -10,14 +10,14 @@ function randomSuffix(length = 6): string {
   return out;
 }
 
-// Referral keys look like `optinex-a3f9k2` — a fixed, on-brand prefix plus six
+// Referral keys look like `incossify-a3f9k2` — a fixed, on-brand prefix plus six
 // random letters/numbers. Retries a handful of times on the (very unlikely)
 // chance of a collision before giving up.
 export async function generateUniqueReferralKey(): Promise<string> {
   const usersRef = adminDb.collection('users');
 
   for (let attempt = 0; attempt < 8; attempt++) {
-    const candidate = `optinex-${randomSuffix()}`;
+    const candidate = `incossify-${randomSuffix()}`;
     const existing = await usersRef.where('referralKey', '==', candidate).limit(1).get();
     if (existing.empty) return candidate;
   }

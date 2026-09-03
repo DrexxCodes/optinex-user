@@ -56,7 +56,7 @@ export async function GET() {
       for (const snap of snaps) {
         if (!snap.exists) continue;
         const d = snap.data()!;
-        const entry = { fullName: d.fullName ?? 'Optinex user', username: d.username ?? '' };
+        const entry = { fullName: d.fullName ?? 'Incossify user', username: d.username ?? '' };
         fetchedNames.set(snap.id, entry);
       }
       // Backfill the cache so we don't have to hit Firestore for these again.
@@ -85,7 +85,7 @@ export async function GET() {
     }
 
     const leaderboard: LeaderboardEntry[] = top.map((entry, i) => {
-      let fullName = 'Optinex user';
+      let fullName = 'Incossify user';
       let username = '';
       const raw = names?.[entry.member];
       if (raw) {

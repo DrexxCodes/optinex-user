@@ -7,5 +7,5 @@ export const STACK_CONFIG = {
   perfectToleranceRatio: 0.06, // overlap-vs-previous-width tolerance counted as a "perfect" drop
   baseScore: 10,
   perfectBonus: 15,
-  colors: ['#1C54F5', '#4FD1F5', '#0E30A0', '#22C55E', '#F59E0B']
+  colors: ['#9D0EB3', '#C33ED9', '#61086C', '#22C55E', '#F59E0B']
 } as const;

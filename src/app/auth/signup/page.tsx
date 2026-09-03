@@ -49,7 +49,7 @@ function SignUpForm() {
   };
 
   return (
-    <AuthCard title="Create your account" subtitle="Start earning with Optinex Africa today.">
+    <AuthCard title="Create your account" subtitle="Start earning with Incossify Africa today.">
       {form.referralKey && (
         <div className="mb-5 flex items-center gap-2.5 rounded-xl bg-brand-50 px-3.5 py-3 text-xs text-brand-700">
           <Gift size={16} className="shrink-0 text-brand-500" />
@@ -68,7 +68,7 @@ function SignUpForm() {
           label="Referral Key (optional)"
           value={form.referralKey}
           onChange={onChange('referralKey')}
-          placeholder="e.g. optinex-a3f9k2"
+          placeholder="e.g. incossify-a3f9k2"
         />
 
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}

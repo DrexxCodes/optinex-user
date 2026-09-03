@@ -37,7 +37,7 @@ export default function ReferralSummaryCard() {
   const share = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Join Optinex Africa', text: 'Join me on Optinex Africa and start earning:', url: link });
+        await navigator.share({ title: 'Join Incossify Africa', text: 'Join me on Incossify Africa and start earning:', url: link });
         return;
       } catch {
         // cancelled the native sheet — fall through to copy

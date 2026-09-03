@@ -36,7 +36,7 @@ export default function TopBar({ user }: { user: CurrentUser | null }) {
   return (
     <header className="relative z-40 flex items-center justify-between px-4 pt-6 lg:px-8 lg:pt-8">
       <Link href="/dashboard" className="lg:hidden">
-        <Image src="/logo.png" alt="Optinex Africa" width={140} height={38} priority />
+        <Image src="/logo.png" alt="Incossify Africa" width={140} height={38} priority />
       </Link>
       <div className="hidden lg:block">
         {user && <p className="font-display text-lg font-bold text-ink">Good to see you, {user.username}</p>}

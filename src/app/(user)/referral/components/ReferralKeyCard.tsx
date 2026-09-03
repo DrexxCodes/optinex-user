@@ -25,7 +25,7 @@ export default function ReferralKeyCard({
         </span>
         <h2 className="mt-3 font-display text-base font-bold text-ink">No referral link yet</h2>
         <p className="mx-auto mt-1.5 max-w-xs text-sm text-ink/55">
-          Create your personal referral link and start earning when friends join Optinex Africa through it.
+          Create your personal referral link and start earning when friends join Incossify Africa through it.
         </p>
         <button
           onClick={onGenerate}
@@ -44,7 +44,7 @@ export default function ReferralKeyCard({
   const share = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Join Optinex Africa', text: 'Join me on Optinex Africa and start earning:', url: link });
+        await navigator.share({ title: 'Join Incossify Africa', text: 'Join me on Incossify Africa and start earning:', url: link });
         return;
       } catch {
         // user cancelled the native share sheet — fall through to copy

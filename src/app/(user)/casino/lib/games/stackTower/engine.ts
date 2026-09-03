@@ -86,7 +86,7 @@ export class StackTowerEngine extends BaseCanvasEngine<StackTowerState> {
     const w = this.width;
     const h = this.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#0A1F3C';
+    ctx.fillStyle = '#1A0533';
     ctx.fillRect(0, 0, w, h);
 
     const H = CFG.blockHeight;

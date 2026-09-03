@@ -20,7 +20,7 @@ export function drawTarget(ctx: CanvasRenderingContext2D, target: Target) {
     ctx.beginPath();
     ctx.arc(0, 0, s * 0.55, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#4FD1F5';
+    ctx.strokeStyle = '#C33ED9';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(0, -s * 0.55);
@@ -44,7 +44,7 @@ export function drawTarget(ctx: CanvasRenderingContext2D, target: Target) {
     ctx.fill();
 
     // edge stroke
-    ctx.strokeStyle = 'rgba(10,31,60,0.25)';
+    ctx.strokeStyle = 'rgba(31,10,60,0.25)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.roundRect(-s / 2, -s / 2, s, s, s * 0.16);
@@ -72,7 +72,7 @@ export function drawTrail(ctx: CanvasRenderingContext2D, trail: SlicePoint[]) {
   ctx.lineJoin = 'round';
   for (let i = 1; i < trail.length; i++) {
     const ratio = i / trail.length;
-    ctx.strokeStyle = `rgba(79, 209, 245, ${0.15 + ratio * 0.6})`;
+    ctx.strokeStyle = `rgba(245, 79, 245, ${0.15 + ratio * 0.6})`;
     ctx.lineWidth = 2 + ratio * 6;
     ctx.beginPath();
     ctx.moveTo(trail[i - 1].x, trail[i - 1].y);

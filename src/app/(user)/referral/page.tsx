@@ -12,7 +12,7 @@ export default function ReferralPage() {
   return (
     <div className="px-4 pt-4 lg:max-w-3xl lg:px-0 lg:pt-2">
       <h1 className="font-display text-xl font-bold text-ink">Referral</h1>
-      <p className="mt-1 text-sm text-ink/60">Invite friends and grow your network on Optinex Africa.</p>
+      <p className="mt-1 text-sm text-ink/60">Invite friends and grow your network on Incossify Africa.</p>
 
       {loading && <div className="mt-5 h-40 animate-pulse rounded-3xl bg-white/40" />}
 

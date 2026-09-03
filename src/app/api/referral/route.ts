@@ -24,7 +24,7 @@ export async function GET() {
         const r = d.data();
         return {
           uid: d.id,
-          fullName: r.fullName ?? 'Optinex user',
+          fullName: r.fullName ?? 'Incossify user',
           username: r.username ?? '',
           joinedAt: r.createdAt?.toDate?.()?.toISOString?.() ?? null,
           _sortMs: r.createdAt?.toDate?.()?.getTime?.() ?? 0

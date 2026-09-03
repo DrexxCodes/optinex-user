@@ -15,7 +15,7 @@ export default function UpgradePage() {
   return (
     <div className="px-4 pt-4 lg:max-w-3xl lg:px-0 lg:pt-2">
       <h1 className="font-display text-xl font-bold text-ink">Upgrade Account</h1>
-      <p className="mt-1 text-sm text-ink/60">Unlock the full Optinex Africa experience with an upgraded account.</p>
+      <p className="mt-1 text-sm text-ink/60">Unlock the full Incossify Africa experience with an upgraded account.</p>
 
       <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
         <div className="flex gap-3">

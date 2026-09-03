@@ -95,7 +95,7 @@ export default function PWAInstaller() {
         </div>
         {showAndroidBanner ? (
           <div className="flex-1">
-            <p className="text-sm font-semibold text-ink">Install Optinex Africa</p>
+            <p className="text-sm font-semibold text-ink">Install Incossify Africa</p>
             <p className="text-xs text-ink/60">Instant launch, right from your home screen.</p>
           </div>
         ) : (

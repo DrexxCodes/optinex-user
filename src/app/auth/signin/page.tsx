@@ -76,7 +76,7 @@ function SignInForm() {
         </button>
       </form>
       <p className="mt-6 text-center text-sm text-ink/60">
-        New to Optinex?{' '}
+        New to Incossify?{' '}
         <Link href={signUpHref} className="font-semibold text-brand-500">
           Create an account
         </Link>
