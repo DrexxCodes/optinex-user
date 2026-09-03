@@ -27,14 +27,14 @@ export default function WelcomeDialog({ username }: { username: string }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem('optinex-welcome-shown')) return;
+    if (sessionStorage.getItem('Incossify-welcome-shown')) return;
     authFetch('/api/popup')
       .then((res) => (res.ok ? res.json() : { enabled: false }))
       .then((data: PopupConfig) => {
         setConfig(data);
         if (data.enabled) {
           setOpen(true);
-          sessionStorage.setItem('optinex-welcome-shown', '1');
+          sessionStorage.setItem('Incossify-welcome-shown', '1');
         }
       })
       .catch(() => {});

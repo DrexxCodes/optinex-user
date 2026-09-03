@@ -1,7 +1,7 @@
 {
-  "name": "Optinex Africa",
-  "short_name": "Optinex",
-  "description": "Earn, grow, and invest — the Optinex Africa way.",
+  "name": "Incossify Africa",
+  "short_name": "Incossify",
+  "description": "Earn, grow, and invest — the Incossify Africa way.",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

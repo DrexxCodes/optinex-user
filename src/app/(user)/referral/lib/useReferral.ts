@@ -100,6 +100,6 @@ export function useReferralLeaderboard() {
 }
 
 export function referralLink(referralKey: string): string {
-  if (typeof window === 'undefined') return `https://optinexglobal.com/auth/signup?ref=${referralKey}`;
+  if (typeof window === 'undefined') return `https://Incossifyafrica.name.ng/auth/signup?ref=${referralKey}`;
   return `${window.location.origin}/auth/signup?ref=${referralKey}`;
 }

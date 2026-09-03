@@ -1,7 +1,7 @@
 // Minimal service worker: enables installability and a splash-screen-ready
 // app shell cache. Kept intentionally lightweight — data always comes fresh
 // from the network; only the shell (logo, loader, background, manifest) is cached.
-const CACHE_NAME = 'optinex-shell-v1';
+const CACHE_NAME = 'Incossify-shell-v1';
 const SHELL_ASSETS = ['/logo.png', '/loader.gif', '/background.png', '/manifest.json'];
 
 self.addEventListener('install', (event) => {

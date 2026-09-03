@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 
-const STORAGE_KEY = 'optinex-balance-visible';
+const STORAGE_KEY = 'Incossify-balance-visible';
 
 export function useBalanceVisibility() {
   const [visible, setVisible] = useState(true);

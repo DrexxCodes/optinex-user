@@ -13,7 +13,7 @@ import { X, Share, PlusSquare, Download } from 'lucide-react';
 // localStorage (not sessionStorage, so it survives tab/browser restarts and
 // isn't a fresh count on every route navigation). Once the user has
 // dismissed it twice today, the banner stays hidden until the date rolls over.
-const STORAGE_KEY = 'optinex-install-banner-state';
+const STORAGE_KEY = 'Incossify-install-banner-state';
 const MAX_DISMISSALS_PER_DAY = 2;
 
 function todayKey() {
