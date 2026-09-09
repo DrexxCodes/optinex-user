@@ -6,6 +6,7 @@ import TopBar from './components/TopBar';
 import WelcomeDialog from './components/WelcomeDialog';
 import RouteLoader from '@/components/RouteLoader';
 import PWAInstaller from '@/components/PWAInstaller';
+import PushNotificationManager from '@/components/PushNotificationManager';
 import { useCurrentUser } from './lib/useCurrentUser';
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
       <div className="app-background" />
       <RouteLoader />
       {!loading && user && <WelcomeDialog username={user.username} />}
+      {!loading && user && <PushNotificationManager />}
 
       <Sidebar />
 
