@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { getSessionUser } from '@/lib/auth/session';
 import { generateReference } from '@/lib/refGenerator';
 import { logAnalyticsEvent } from '@/lib/analytics';
+import { getDistinctActivePackageCount, MIN_DISTINCT_PACKAGES } from '@/lib/withdrawal/eligibility';
 
 export async function POST(req: NextRequest) {
   const session = await getSessionUser();
@@ -34,6 +35,10 @@ export async function POST(req: NextRequest) {
       if (!dateThresholdReached) throw new Error('WITHDRAWAL_NOT_ENABLED');
       if (!isUpgraded) throw new Error('UPGRADE_REQUIRED');
       if (!hasPaidPackage) throw new Error('PACKAGE_REQUIRED');
+
+      const distinctPackageCount = await getDistinctActivePackageCount(session.uid, tx);
+      if (distinctPackageCount < MIN_DISTINCT_PACKAGES) throw new Error('MULTIPLE_PACKAGES_REQUIRED');
+
       if (!user.payoutMethod) throw new Error('NO_PAYOUT_METHOD');
       if ((user.walletAmount ?? 0) < amount) throw new Error('INSUFFICIENT_BALANCE');
 
@@ -70,6 +75,7 @@ export async function POST(req: NextRequest) {
       WITHDRAWAL_NOT_ENABLED: "Withdrawal isn't enabled yet. Check back later.",
       UPGRADE_REQUIRED: 'You must upgrade your account to access withdrawals.',
       PACKAGE_REQUIRED: 'A paid package is required before you can withdraw.',
+      MULTIPLE_PACKAGES_REQUIRED: `You need at least ${MIN_DISTINCT_PACKAGES} different packages before you can withdraw.`,
       NO_PAYOUT_METHOD: 'Add your payout details before requesting a withdrawal.',
       INSUFFICIENT_BALANCE: 'Your wallet balance is too low for this amount.'
     };
