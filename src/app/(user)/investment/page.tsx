@@ -28,12 +28,12 @@ export default function InvestmentPage() {
           <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-700">
             <span className="text-xs font-bold">!</span>
           </div>
-          <div>
+          {/* <div>
             <p className="text-sm font-semibold text-amber-900">Users Please Note</p>
             <p className="mt-1 text-xs text-amber-800">
               Please do not make payments using Opay. Use only traditional banking methods to avoid reversals.
             </p>
-          </div>
+          </div> */}
         </div>
       </div>
 
