@@ -112,7 +112,7 @@ export default function PayoutMethodForm({
 // Nigerian banks in the list, scrolling a native dropdown was painful, so
 // this lets the user type a few letters of the bank name and pick from the
 // matching suggestions instead.
-function BankPicker({
+export function BankPicker({
   banks,
   loading,
   value,

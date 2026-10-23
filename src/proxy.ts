@@ -60,6 +60,7 @@ export const config = {
     '/tasks/:path*',
     '/investment/:path*',
     '/withdrawal/:path*',
+    '/loans/:path*',
     '/casino/:path*',
     '/profile/:path*',
     '/referral/:path*',

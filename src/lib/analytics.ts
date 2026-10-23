@@ -13,6 +13,7 @@ export type AnalyticsAction =
   | 'investment_submitted'
   | 'investment_verified'
   | 'withdrawal_requested'
+  | 'loan_requested'
   | 'casino_score_submitted'
   | 'referral_bonus'
   | 'account_upgrade_submitted'

@@ -20,7 +20,7 @@ export default function BottomNav() {
                 aria-label={label}
                 title={label}
                 className={clsx(
-                  'flex h-11 w-11 items-center justify-center rounded-full transition-all',
+                  'flex h-10 w-10 items-center sm:h-11 sm:w-11 justify-center rounded-full transition-all',
                   active ? 'bg-brand-500 text-white shadow-card' : 'text-ink/45 hover:bg-white/50 hover:text-ink/70'
                 )}
               >
