@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { authFetch } from '@/lib/auth/authClient';
 import type { LoanStage, LoanTimelineStep } from '@/lib/loans/config';
+import type { LoanApplicationInput } from '@/lib/loans/validation';
 
 export type Loan = {
   id: string;
@@ -16,14 +17,14 @@ export type Loan = {
 
 export type LoansState = {
   allowed: boolean;
-  blockCode: 'UPGRADE_REQUIRED' | 'PACKAGE_REQUIRED' | 'MULTIPLE_PACKAGES_REQUIRED' | null;
+  blockCode: 'UPGRADE_REQUIRED' | 'PACKAGE_REQUIRED' | 'MORE_PACKAGES_REQUIRED' | null;
   reason: string | null;
   hasPending: boolean;
   limits: { min: number; max: number };
   loans: Loan[];
 };
 
-export type ApplyPayload = { amount: number; accountNumber: string; bankCode: string };
+export type ApplyPayload = LoanApplicationInput;
 
 export function useLoans() {
   const [state, setState] = useState<LoansState | null>(null);

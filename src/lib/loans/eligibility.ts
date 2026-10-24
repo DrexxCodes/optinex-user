@@ -1,32 +1,36 @@
 import type { DocumentData, Transaction } from 'firebase-admin/firestore';
 import { getDistinctActivePackageCount, MIN_DISTINCT_PACKAGES } from '@/lib/withdrawal/eligibility';
 
-export type LoanBlockCode = 'UPGRADE_REQUIRED' | 'PACKAGE_REQUIRED' | 'MULTIPLE_PACKAGES_REQUIRED';
-
-export const LOAN_BLOCK_MESSAGES: Record<LoanBlockCode, string> = {
-  UPGRADE_REQUIRED: 'You must upgrade your account to apply for a loan.',
-  PACKAGE_REQUIRED: 'A paid package is required before you can apply for a loan.',
-  MULTIPLE_PACKAGES_REQUIRED: `You need at least ${MIN_DISTINCT_PACKAGES} different active packages before you can apply for a loan.`
-};
+export type LoanBlockCode = 'UPGRADE_REQUIRED' | 'PACKAGE_REQUIRED' | 'MORE_PACKAGES_REQUIRED';
+export type LoanBlock = { code: LoanBlockCode; message: string };
 
 /**
- * Loan gatekeeper — mirrors the withdrawal rules (upgraded account, a paid
- * package, and at least MIN_DISTINCT_PACKAGES *different* active packages)
- * but intentionally has no "enabled date" or payout-method requirement.
+ * Loan gatekeeper — same rules as withdrawal (upgraded account + at least
+ * MIN_DISTINCT_PACKAGES *different* active packages) but with messages that
+ * tell the user exactly what to do next, in order:
+ *   1. not upgraded               -> upgrade first
+ *   2. upgraded, no active package -> you need at least 2 packages
+ *   3. upgraded, 1 active package  -> add one more package
+ * No "enabled date" or payout-method requirement.
  *
- * Pass `tx` when calling from inside a Firestore transaction so the package
- * count is read atomically with the write; omit it for the read-only status
- * route. Returns the first failing rule, or null when the user is eligible.
+ * Pass `tx` when calling inside a Firestore transaction so the package count
+ * is read atomically with the write. Returns the first failing rule, or null.
  */
-export async function getLoanBlock(uid: string, user: DocumentData, tx?: Transaction): Promise<LoanBlockCode | null> {
-  const isUpgraded = user.accountTier === 'upgraded';
-  const hasPaidPackage = !!user.packageStatus && user.packageStatus !== 'Free' && user.packageStatus !== 'pending verification';
+export async function getLoanBlock(uid: string, user: DocumentData, tx?: Transaction): Promise<LoanBlock | null> {
+  if (user.accountTier !== 'upgraded') {
+    return { code: 'UPGRADE_REQUIRED', message: 'You need to upgrade your account first before you can apply for a loan.' };
+  }
 
-  if (!isUpgraded) return 'UPGRADE_REQUIRED';
-  if (!hasPaidPackage) return 'PACKAGE_REQUIRED';
+  const count = await getDistinctActivePackageCount(uid, tx);
+  if (count >= MIN_DISTINCT_PACKAGES) return null;
 
-  const distinct = await getDistinctActivePackageCount(uid, tx);
-  if (distinct < MIN_DISTINCT_PACKAGES) return 'MULTIPLE_PACKAGES_REQUIRED';
+  if (count === 0) {
+    return { code: 'PACKAGE_REQUIRED', message: `You need at least ${MIN_DISTINCT_PACKAGES} active packages to apply for a loan.` };
+  }
 
-  return null;
+  const remaining = MIN_DISTINCT_PACKAGES - count;
+  return {
+    code: 'MORE_PACKAGES_REQUIRED',
+    message: `You have ${count} active package${count === 1 ? '' : 's'}. Add ${remaining === 1 ? 'one more package' : `${remaining} more packages`} to apply for a loan.`
+  };
 }

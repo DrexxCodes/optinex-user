@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit';
 
 // Resolves an account name for a given account number + bank code before it's saved.
 export async function POST(req: NextRequest) {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 });
+
+  // Every call here costs a Paystack lookup, so cap it per user.
+  const limit = await rateLimit('resolve-account', session.uid, 10, 60);
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter, 'Too many account lookups. Wait a moment and try again.');
 
   const { accountNumber, bankCode } = await req.json();
   // console.log('[resolve-account] incoming request', { uid: session.uid, accountNumber, bankCode });

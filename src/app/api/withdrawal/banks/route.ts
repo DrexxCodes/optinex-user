@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit';
 
 // Proxies Paystack's bank list so the secret key never reaches the client.
 export async function GET() {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 });
+
+  const limit = await rateLimit('bank-list', session.uid, 30, 60);
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter);
 
 
 const res = await fetch('https://api.paystack.co/bank?country=nigeria&type=nuban', {

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { getSessionUser } from '@/lib/auth/session';
-import { getLoanBlock, LOAN_BLOCK_MESSAGES } from '@/lib/loans/eligibility';
+import { getLoanBlock } from '@/lib/loans/eligibility';
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit';
 import { buildLoanTimeline, MAX_LOAN_AMOUNT, MIN_LOAN_AMOUNT } from '@/lib/loans/config';
 
 // Everything the loans page needs in one call: whether the user may apply
@@ -10,6 +11,9 @@ import { buildLoanTimeline, MAX_LOAN_AMOUNT, MIN_LOAN_AMOUNT } from '@/lib/loans
 export async function GET() {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 });
+
+  const limit = await rateLimit('loan-list', session.uid, 30, 60);
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter);
 
   const [userSnap, loansSnap] = await Promise.all([
     adminDb.collection('users').doc(session.uid).get(),
@@ -43,8 +47,8 @@ export async function GET() {
 
   return NextResponse.json({
     allowed: !block,
-    blockCode: block,
-    reason: block ? LOAN_BLOCK_MESSAGES[block] : null,
+    blockCode: block?.code ?? null,
+    reason: block?.message ?? null,
     hasPending: loans.some((l) => l.status === 'pending'),
     limits: { min: MIN_LOAN_AMOUNT, max: MAX_LOAN_AMOUNT },
     loans
