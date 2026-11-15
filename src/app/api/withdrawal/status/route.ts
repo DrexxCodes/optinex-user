@@ -1,26 +1,31 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/auth/session';
+import { getConfig } from '@/lib/db/config';
 import { getDistinctActivePackageCount, MIN_DISTINCT_PACKAGES } from '@/lib/withdrawal/eligibility';
+import { num } from '@/lib/db/format';
 
-// Encodes the withdrawal gatekeeper rules for the client to render, without
-// letting the client decide enforcement — `request/route.ts` re-checks all of this.
+// Encodes the withdrawal gatekeeper rules for the client to render, without letting the client
+// decide enforcement — the request function re-checks all of this atomically.
 export async function GET() {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 });
 
-  const [userSnap, withdrawalConfigSnap] = await Promise.all([
-    adminDb.collection('users').doc(session.uid).get(),
-    adminDb.collection('config').doc('withdrawal').get()
+  const [userRes, config] = await Promise.all([
+    supabaseAdmin
+      .from('profiles')
+      .select('account_tier, package_status, payout_method, wallet_amount')
+      .eq('id', session.uid)
+      .maybeSingle(),
+    getConfig('withdrawal')
   ]);
 
-  const user = userSnap.data() ?? {};
-  const config = withdrawalConfigSnap.exists ? withdrawalConfigSnap.data()! : {};
-  const enabledDate = config.enabledDate?.toDate?.() ?? null;
+  const user = userRes.data;
+  const enabledDate = config?.enabledDate ? new Date(config.enabledDate) : null;
 
   const dateThresholdReached = !!enabledDate && new Date() >= enabledDate;
-  const isUpgraded = user.accountTier === 'upgraded';
-  const hasPaidPackage = user.packageStatus && user.packageStatus !== 'Free' && user.packageStatus !== 'pending verification';
+  const isUpgraded = user?.account_tier === 'upgraded';
+  const hasPaidPackage = !!user?.package_status && user.package_status !== 'Free' && user.package_status !== 'pending verification';
   const distinctPackageCount = hasPaidPackage ? await getDistinctActivePackageCount(session.uid) : 0;
   const hasEnoughPackages = distinctPackageCount >= MIN_DISTINCT_PACKAGES;
 
@@ -41,8 +46,8 @@ export async function GET() {
     allowed: !reason,
     reason,
     enabledDate,
-    packageStatus: user.packageStatus ?? 'Free',
-    payoutMethod: user.payoutMethod ?? null,
-    walletAmount: user.walletAmount ?? 0
+    packageStatus: user?.package_status ?? 'Free',
+    payoutMethod: user?.payout_method ?? null,
+    walletAmount: num(user?.wallet_amount)
   });
 }

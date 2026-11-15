@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/auth/session';
 import { generateReference } from '@/lib/refGenerator';
 import { logAnalyticsEvent } from '@/lib/analytics';
+import { num } from '@/lib/db/format';
 
-// Called after the receipt has been uploaded via UploadThing. Creates a
-// pending investment request and flips the user's package status so the
-// withdrawal gatekeeper and dashboard badge both reflect "pending verification".
+// Called after the receipt has been uploaded via UploadThing. Creates a pending investment
+// request and flips the user's package status so the withdrawal gatekeeper and dashboard badge
+// both reflect "pending verification".
 export async function POST(req: NextRequest) {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 });
@@ -17,27 +17,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A package and receipt are required.' }, { status: 400 });
   }
 
-  const packageSnap = await adminDb.collection('packages').doc(packageId).get();
-  if (!packageSnap.exists) return NextResponse.json({ error: 'Package not found.' }, { status: 404 });
-  const pkg = packageSnap.data()!;
+  const { data: pkg } = await supabaseAdmin.from('packages').select('name, price').eq('id', String(packageId)).maybeSingle();
+  if (!pkg) return NextResponse.json({ error: 'Package not found.' }, { status: 404 });
 
   const reference = generateReference();
-  const invRef = adminDb.collection('investments').doc();
+  const { data: inv, error } = await supabaseAdmin
+    .from('investments')
+    .insert({
+      user_id: session.uid,
+      package_id: String(packageId),
+      package_name: pkg.name,
+      amount: pkg.price,
+      receipt_url: receiptUrl,
+      status: 'pending',
+      reference
+    })
+    .select('id')
+    .single();
+  if (error || !inv) {
+    console.error('[investment/subscribe]', error);
+    return NextResponse.json({ error: 'Could not submit your investment.' }, { status: 500 });
+  }
 
-  await invRef.set({
-    uid: session.uid,
-    packageId,
-    packageName: pkg.name,
-    amount: pkg.price,
-    receiptUrl,
-    status: 'pending',
-    reference,
-    createdAt: FieldValue.serverTimestamp()
-  });
+  await supabaseAdmin.from('profiles').update({ package_status: 'pending verification' }).eq('id', session.uid);
+  await logAnalyticsEvent('investment_submitted', num(pkg.price)).catch((e) => console.error('[investment] analytics', e));
 
-  await adminDb.collection('users').doc(session.uid).set({ packageStatus: 'pending verification' }, { merge: true });
-
-  await logAnalyticsEvent('investment_submitted', pkg.price);
-
-  return NextResponse.json({ ok: true, reference, investmentId: invRef.id });
+  return NextResponse.json({ ok: true, reference, investmentId: inv.id });
 }

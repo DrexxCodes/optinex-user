@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/auth/session';
 import { generateReference } from '@/lib/refGenerator';
 import { logAnalyticsEvent } from '@/lib/analytics';
+import { num } from '@/lib/db/format';
 
 // Allows a user with an active investment to change their package.
 // Creates a new investment request and marks the user as changing package.
@@ -16,44 +16,47 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A package and receipt are required.' }, { status: 400 });
   }
 
-  // Check if user has an active package
-  const userSnap = await adminDb.collection('users').doc(session.uid).get();
-  if (!userSnap.exists) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
+  const { data: user } = await supabaseAdmin
+    .from('profiles')
+    .select('package_status, package_id')
+    .eq('id', session.uid)
+    .maybeSingle();
+  if (!user) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
-  const user = userSnap.data()!;
-  if (user.packageStatus === 'Free' || !user.packageStatus || user.packageStatus === 'pending verification') {
-    return NextResponse.json(
-      { error: 'You must have an active package to change packages.' },
-      { status: 400 }
-    );
+  if (user.package_status === 'Free' || !user.package_status || user.package_status === 'pending verification') {
+    return NextResponse.json({ error: 'You must have an active package to change packages.' }, { status: 400 });
   }
 
-  const packageSnap = await adminDb.collection('packages').doc(packageId).get();
-  if (!packageSnap.exists) return NextResponse.json({ error: 'Package not found.' }, { status: 404 });
-  const pkg = packageSnap.data()!;
+  const { data: pkg } = await supabaseAdmin.from('packages').select('name, price').eq('id', String(packageId)).maybeSingle();
+  if (!pkg) return NextResponse.json({ error: 'Package not found.' }, { status: 404 });
 
   const reference = generateReference();
-  const invRef = adminDb.collection('investments').doc();
+  const { data: inv, error } = await supabaseAdmin
+    .from('investments')
+    .insert({
+      user_id: session.uid,
+      package_id: String(packageId),
+      package_name: pkg.name,
+      amount: pkg.price,
+      receipt_url: receiptUrl,
+      status: 'pending',
+      reference,
+      is_package_change: true,
+      previous_package_id: user.package_id
+    })
+    .select('id')
+    .single();
+  if (error || !inv) {
+    console.error('[investment/change-package]', error);
+    return NextResponse.json({ error: 'Could not submit your package change.' }, { status: 500 });
+  }
 
-  await invRef.set({
-    uid: session.uid,
-    packageId,
-    packageName: pkg.name,
-    amount: pkg.price,
-    receiptUrl,
-    status: 'pending',
-    reference,
-    isPackageChange: true,
-    previousPackageId: user.packageId,
-    createdAt: FieldValue.serverTimestamp()
-  });
+  await supabaseAdmin
+    .from('profiles')
+    .update({ package_status: 'pending verification', is_changing_package: true })
+    .eq('id', session.uid);
 
-  await adminDb
-    .collection('users')
-    .doc(session.uid)
-    .set({ packageStatus: 'pending verification', isChangingPackage: true }, { merge: true });
+  await logAnalyticsEvent('package_change_submitted', num(pkg.price)).catch((e) => console.error('[investment] analytics', e));
 
-  await logAnalyticsEvent('package_change_submitted' as Parameters<typeof logAnalyticsEvent>[0], pkg.price);
-
-  return NextResponse.json({ ok: true, reference, investmentId: invRef.id });
+  return NextResponse.json({ ok: true, reference, investmentId: inv.id });
 }

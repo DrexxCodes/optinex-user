@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
-import { randomBytes } from 'crypto';
-import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb } from '@/lib/firebase/admin';
-import { signAccessToken } from '@/lib/auth/jwt';
-import { accessCookieOptions, refreshCookieOptions, ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth/session';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { logAnalyticsEvent } from '@/lib/analytics';
+import { isUniqueViolation } from '@/lib/db/format';
 import { redis, REFERRAL_LEADERBOARD_KEY, REFERRAL_WEEKLY_LEADERBOARD_KEY, REFERRAL_LEADERBOARD_NAMES_KEY } from '@/lib/redis';
 
+const REFERRAL_BONUS = 2000;
+
+// Creates the account only — the browser then signs in with Supabase Auth (see
+// lib/auth/clientAuth.ts) so the session is established from the user's own IP.
 export async function POST(req: NextRequest) {
   try {
     const { fullName, email, username, password, referralKey } = await req.json();
@@ -22,134 +22,78 @@ export async function POST(req: NextRequest) {
     const normalizedEmail = String(email).trim().toLowerCase();
     const normalizedUsername = String(username).trim().toLowerCase();
 
-    const usersRef = adminDb.collection('users');
-    const [emailSnap, usernameSnap] = await Promise.all([
-      usersRef.where('email', '==', normalizedEmail).limit(1).get(),
-      usersRef.where('username', '==', normalizedUsername).limit(1).get()
+    const [emailHit, usernameHit] = await Promise.all([
+      supabaseAdmin.from('profiles').select('id').eq('email', normalizedEmail).limit(1),
+      supabaseAdmin.from('profiles').select('id').eq('username', normalizedUsername).limit(1)
     ]);
+    if (emailHit.data?.length) return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
+    if (usernameHit.data?.length) return NextResponse.json({ error: 'That username is already taken.' }, { status: 409 });
 
-    if (!emailSnap.empty) {
-      return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
-    }
-    if (!usernameSnap.empty) {
-      return NextResponse.json({ error: 'That username is already taken.' }, { status: 409 });
-    }
-
-    // Optional referral key: must match another user's own referral key.
-    // Keys look like `incossify-a3f9k2` — compare lowercased/trimmed rather
-    // than the old uppercase-hex assumption.
-    let referredBy: string | null = null;
-    let referrerData: { fullName?: string; username?: string } | null = null;
-    if (referralKey) {
-      const referrerSnap = await usersRef.where('referralKey', '==', String(referralKey).trim().toLowerCase()).limit(1).get();
-      if (!referrerSnap.empty) {
-        referredBy = referrerSnap.docs[0].id;
-        const r = referrerSnap.docs[0].data();
-        referrerData = { fullName: r.fullName, username: r.username };
-      }
-    }
-
-    const REFERRAL_BONUS = 2000;
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const userRef = usersRef.doc();
-    const batch = adminDb.batch();
-
-    batch.set(userRef, {
-      fullName,
+    // 1) Supabase Auth account (email pre-confirmed — there's no email-verification step in this product).
+    const created = await supabaseAdmin.auth.admin.createUser({
       email: normalizedEmail,
-      username: normalizedUsername,
-      passwordHash,
-      walletAmount: 0,
-      packageStatus: 'Free',
-      packageId: null,
-      packageExpiresAt: null,
-      payoutMethod: null,
-      admin: false,
-      referralKey: null, // generated on demand from the Referral page
-      referralEarnings: 0,
-      weeklyReferrals: 0, // resets every week from the admin Referrals page
-      allTimeReferrals: 0, // never reset — feeds the admin leaderboard's all-time column
-      referredBy,
-      accountTier: 'standard',
-      upgradeStatus: 'none',
-      avatarSeed: normalizedEmail,
-      createdAt: FieldValue.serverTimestamp()
+      password,
+      email_confirm: true,
+      user_metadata: { username: normalizedUsername, full_name: fullName }
+    });
+    if (created.error || !created.data.user) {
+      const msg = created.error?.message ?? '';
+      if (/already|registered|exists/i.test(msg)) {
+        return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
+      }
+      console.error('[signup] createUser', created.error);
+      return NextResponse.json({ error: 'Something went wrong creating your account.' }, { status: 500 });
+    }
+    const authUser = created.data.user;
+
+    // 2) Profile + referral bonus, atomically, in one Postgres function.
+    const { data: result, error: profileError } = await supabaseAdmin.rpc('create_profile', {
+      p_id: authUser.id,
+      p_full_name: fullName,
+      p_email: normalizedEmail,
+      p_username: normalizedUsername,
+      p_referral_key: referralKey ? String(referralKey) : null,
+      p_bonus: REFERRAL_BONUS
     });
 
-    // Referral bonus: ₦100 to the referrer's wallet, credited the moment the
-    // referred account is created (not gated on the new user doing anything
-    // else). Recorded as a normal wallet transaction so it shows up in the
-    // referrer's activity feed like any other credit.
-    if (referredBy) {
-      const referrerRef = usersRef.doc(referredBy);
-      batch.set(
-        referrerRef,
-        {
-          walletAmount: FieldValue.increment(REFERRAL_BONUS),
-          referralEarnings: FieldValue.increment(REFERRAL_BONUS),
-          // Feeds the admin Referrals leaderboard (₦1,000/referral there, independent
-          // of the REFERRAL_BONUS actually paid into the wallet above). weeklyReferrals
-          // is zeroed by the admin's weekly reset; allTimeReferrals is never touched.
-          weeklyReferrals: FieldValue.increment(1),
-          allTimeReferrals: FieldValue.increment(1)
-        },
-        { merge: true }
-      );
-      batch.set(referrerRef.collection('walletTransactions').doc(), {
-        txnType: 'credit',
-        txnName: 'Referral bonus',
-        amount: REFERRAL_BONUS,
-        txnRef: `@${normalizedUsername} joined`,
-        timestamp: FieldValue.serverTimestamp()
-      });
+    if (profileError) {
+      // Roll the auth account back so the email isn't left orphaned.
+      await supabaseAdmin.auth.admin.deleteUser(authUser.id).catch(() => {});
+      if (isUniqueViolation(profileError, 'profiles_username_key')) {
+        return NextResponse.json({ error: 'That username is already taken.' }, { status: 409 });
+      }
+      if (isUniqueViolation(profileError, 'profiles_email_key')) {
+        return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
+      }
+      console.error('[signup] create_profile', profileError);
+      return NextResponse.json({ error: 'Something went wrong creating your account.' }, { status: 500 });
     }
 
-    await batch.commit();
+    const referrerId: string | null = result?.referrer_id ?? null;
 
-    if (referredBy) {
-      await logAnalyticsEvent('referral_bonus', REFERRAL_BONUS);
+    if (referrerId) {
+      await logAnalyticsEvent('referral_bonus', REFERRAL_BONUS).catch((e) => console.error('[signup] analytics', e));
 
-      // Bump the referrer's score on the referral leaderboard. This is cache-only
-      // (not the source of truth — that's the `referredBy` field on each user doc,
-      // which /api/referral already counts) so a Redis hiccup here should never
-      // block or fail the signup itself.
+      // Cache-only leaderboard bump — a Redis hiccup must never fail the signup itself.
       try {
-        await redis.zincrby(REFERRAL_LEADERBOARD_KEY, 1, referredBy);
-        await redis.zincrby(REFERRAL_WEEKLY_LEADERBOARD_KEY, 1, referredBy);
+        await redis.zincrby(REFERRAL_LEADERBOARD_KEY, 1, referrerId);
+        await redis.zincrby(REFERRAL_WEEKLY_LEADERBOARD_KEY, 1, referrerId);
         await redis.hset(REFERRAL_LEADERBOARD_NAMES_KEY, {
-          [referredBy]: JSON.stringify({ fullName: referrerData?.fullName ?? 'Incossify user', username: referrerData?.username ?? '' })
+          [referrerId]: JSON.stringify({
+            fullName: result?.referrer_full_name ?? 'Incossify user',
+            username: result?.referrer_username ?? ''
+          })
         });
       } catch (err) {
         console.error('[signup] referral leaderboard update failed:', err);
       }
     }
 
-    await logAnalyticsEvent('signup');
+    await logAnalyticsEvent('signup').catch((e) => console.error('[signup] analytics', e));
 
-    const deviceId = randomBytes(8).toString('hex');
-    const refreshToken = randomBytes(48).toString('hex');
-    const refreshHash = await bcrypt.hash(refreshToken, 10);
-
-    await userRef.collection('refreshTokens').doc(deviceId).set({
-      hash: refreshHash,
-      createdAt: FieldValue.serverTimestamp(),
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
+    return NextResponse.json({
+      user: { uid: authUser.id, fullName, email: normalizedEmail, username: normalizedUsername }
     });
-
-    const accessToken = await signAccessToken({
-      uid: userRef.id,
-      email: normalizedEmail,
-      username: normalizedUsername,
-      deviceId
-    });
-
-    const res = NextResponse.json({
-      user: { uid: userRef.id, fullName, email: normalizedEmail, username: normalizedUsername }
-    });
-    res.cookies.set(ACCESS_COOKIE, accessToken, accessCookieOptions());
-    res.cookies.set(REFRESH_COOKIE, `${userRef.id}.${deviceId}.${refreshToken}`, refreshCookieOptions());
-    return res;
   } catch (err) {
     console.error('[signup]', err);
     return NextResponse.json({ error: 'Something went wrong creating your account.' }, { status: 500 });

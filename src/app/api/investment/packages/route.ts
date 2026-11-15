@@ -1,18 +1,21 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/auth/session';
+import { num } from '@/lib/db/format';
 
-// Admin-created packages: price, duration, and details. Every account starts
-// on the implicit `Free` tier which never appears here.
+// Admin-created packages: price, duration, and details. Every account starts on the implicit
+// `Free` tier which never appears here.
 export async function GET() {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 });
 
-  const snap = await adminDb.collection('packages').where('active', '==', true).orderBy('price', 'asc').get();
+  const { data } = await supabaseAdmin
+    .from('packages')
+    .select('id, name, price, duration, details')
+    .eq('active', true)
+    .order('price', { ascending: true });
+
   return NextResponse.json({
-    packages: snap.docs.map((d) => {
-      const p = d.data();
-      return { id: d.id, name: p.name, price: p.price, duration: p.duration, details: p.details ?? [] };
-    })
+    packages: (data ?? []).map((p) => ({ id: p.id, name: p.name, price: num(p.price), duration: p.duration, details: p.details ?? [] }))
   });
 }

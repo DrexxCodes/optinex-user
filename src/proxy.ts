@@ -1,112 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth/jwt';
-import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth/session';
-import { MAINTENANCE_PATH, isMaintenanceMode } from '@/lib/maintenance';
+import { redirectWithCookies, updateSession } from '@/lib/supabase/proxy';
 
-// Route prefixes that sit behind the session gate / auth bounce. Previously
-// expressed through `config.matcher`; the matcher is now broad (so the
-// maintenance redirect can cover every page), so the same list is checked
-// in code instead.
-const SESSION_GATED_PREFIXES = [
-  '/dashboard',
-  '/streak',
-  '/tasks',
-  '/investment',
-  '/withdrawal',
-  '/loans',
-  '/casino',
-  '/profile',
-  '/referral',
-  '/transactions',
-  '/upgrade',
-  '/admin',
-  '/auth'
-];
-
-const isSessionGated = (pathname: string) =>
-  SESSION_GATED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-
-// Route-level gate. This is a fast, edge-friendly check on the access token
-// only — full session/refresh handling still lives in the API routes.
-//
-// IMPORTANT: the access token is short-lived (15m) by design, while the
-// refresh token cookie lives for 30 days. Client-side, `authFetch` already
-// knows how to silently exchange an expired access token for a new one on a
-// 401 (see src/lib/auth/authClient.ts) — but that retry logic only runs
-// around *fetch calls*. Every client-side navigation and full page load
-// passes through here first, before any component has a chance to make a
-// fetch. Previously this function redirected to /auth/signin the instant
-// the access token was missing or expired, with no regard for whether a
-// valid refresh token existed — so any navigation that happened to land
-// more than ~15 minutes after the last token refresh bounced the user to
-// the sign-in page even though they had a perfectly valid 30-day session.
-// That's the "logged out mid-session" bug.
-//
-// Fix: only treat the user as logged out when there's no session artifact
-// at all (no valid access token AND no refresh token cookie). If a refresh
-// token cookie is present but the access token has simply expired, let the
-// request through — the page will mount, `authFetch` will hit a 401 on its
-// first API call, silently call /api/auth/refresh, and retry. We don't call
-// /api/auth/refresh from here directly because that route needs bcrypt +
-// the Firestore Admin SDK, which aren't Edge-runtime friendly.
+// Route-level gate. `updateSession` validates the Supabase Auth JWT locally and — when the
+// short-lived access token has expired but the refresh token is still good — transparently
+// refreshes it and re-issues the cookies, so a still-valid session is never mistaken for a
+// logged-out one (this replaces the old hand-rolled access/refresh cookie dance).
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-
-  // Maintenance mode runs first: it needs no cookies or JWT verification,
-  // so every page request is redirected without any auth work (cheaper and
-  // faster while the backend is being upgraded).
-  const maintenance = isMaintenanceMode();
-  const onMaintenancePage = pathname === MAINTENANCE_PATH;
-
-  if (maintenance) {
-    if (onMaintenancePage) return NextResponse.next();
-    const url = req.nextUrl.clone();
-    url.pathname = MAINTENANCE_PATH;
-    url.search = '';
-    return NextResponse.redirect(url);
-  }
-
-  // Maintenance is off — nobody should be sitting on the maintenance page
-  // (e.g. a user who left the tab open), so send them back to the app.
-  if (onMaintenancePage) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/';
-    url.search = '';
-    return NextResponse.redirect(url);
-  }
-
-  if (!isSessionGated(pathname)) return NextResponse.next();
-
-  const accessToken = req.cookies.get(ACCESS_COOKIE)?.value;
-  const hasRefreshToken = !!req.cookies.get(REFRESH_COOKIE)?.value;
-  const session = accessToken ? await verifyAccessToken(accessToken) : null;
-
+  const { response, authenticated } = await updateSession(req);
   const isAuthRoute = pathname.startsWith('/auth');
-  const hasSessionArtifact = !!session || hasRefreshToken;
 
-  if (!hasSessionArtifact && !isAuthRoute) {
+  if (!authenticated && !isAuthRoute) {
     const url = req.nextUrl.clone();
     url.pathname = '/auth/signin';
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url, response);
   }
 
-  // Only bounce away from /auth when the access token itself is verified —
-  // not merely because a refresh cookie exists — so someone with an expired
-  // (but refreshable) session can still reach /auth/signin instead of being
-  // redirect-looped into a dashboard that hasn't refreshed its token yet.
-  if (session && isAuthRoute) {
+  if (authenticated && isAuthRoute) {
     const url = req.nextUrl.clone();
     url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url, response);
   }
 
-  return NextResponse.next();
+  return response;
 }
 
-// Broad matcher so maintenance mode can cover every page, including the
-// landing page. Skips API routes (cron jobs, Paystack/UploadThing webhooks
-// must keep working), Next internals, and any path with a file extension
-// (sw.js, manifest.json, images, fonts, maintenance.svg).
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|.*\\..*).*)']
+  matcher: [
+    '/dashboard/:path*',
+    '/streak/:path*',
+    '/tasks/:path*',
+    '/investment/:path*',
+    '/withdrawal/:path*',
+    '/loans/:path*',
+    '/casino/:path*',
+    '/profile/:path*',
+    '/referral/:path*',
+    '/transactions/:path*',
+    '/upgrade/:path*',
+    '/admin/:path*',
+    '/auth/:path*'
+  ]
 };

@@ -1,35 +1,35 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/auth/session';
+import { num } from '@/lib/db/format';
 
-// Renders active tasks created by Admin, flagged with completion state for
-// the current user so the UI can disable the button after reward claim.
+// Renders active tasks created by Admin. Completed tasks are dropped entirely rather than
+// flagged — once a user claims a task's reward, it disappears from their list for good.
 export async function GET() {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 });
 
-  const [tasksSnap, completedSnap] = await Promise.all([
-    adminDb.collection('tasks').where('active', '==', true).orderBy('createdAt', 'desc').get(),
-    adminDb.collection('users').doc(session.uid).collection('completedTasks').get()
+  const [tasks, completed] = await Promise.all([
+    supabaseAdmin
+      .from('tasks')
+      .select('id, name, details, button_label, link, reward')
+      .eq('active', true)
+      .order('created_at', { ascending: false }),
+    supabaseAdmin.from('completed_tasks').select('task_id').eq('user_id', session.uid)
   ]);
 
-  const completedIds = new Set(completedSnap.docs.map((d) => d.id));
+  const completedIds = new Set((completed.data ?? []).map((c) => c.task_id as string));
 
   return NextResponse.json({
-    // Completed tasks are dropped entirely rather than flagged — once a user
-    // claims a task's reward, it should disappear from their list for good.
-    tasks: tasksSnap.docs
-      .filter((d) => !completedIds.has(d.id))
-      .map((d) => {
-        const t = d.data();
-        return {
-          id: d.id,
-          name: t.name,
-          details: t.details,
-          buttonLabel: t.buttonLabel,
-          link: t.link,
-          reward: t.reward
-        };
-      })
+    tasks: (tasks.data ?? [])
+      .filter((t) => !completedIds.has(t.id))
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        details: t.details,
+        buttonLabel: t.button_label,
+        link: t.link,
+        reward: num(t.reward)
+      }))
   });
 }

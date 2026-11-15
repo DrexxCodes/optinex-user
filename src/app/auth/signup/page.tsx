@@ -6,6 +6,7 @@ import { useState, Suspense } from 'react';
 import { Gift } from 'lucide-react';
 import AuthCard from '../components/AuthCard';
 import FormField from '../components/FormField';
+import { signUpRequest } from '@/lib/auth/clientAuth';
 
 function SignUpForm() {
   const router = useRouter();
@@ -28,18 +29,12 @@ function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? 'Could not create your account.');
+      const result = await signUpRequest(form);
+      if (!result.ok) {
+        setError(result.error);
         return;
       }
-      router.push('/dashboard');
+      router.push(result.redirectTo);
       router.refresh();
     } catch {
       setError('Network error — please try again.');

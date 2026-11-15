@@ -1,55 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
-import { adminDb } from '@/lib/firebase/admin';
-import { signAccessToken } from '@/lib/auth/jwt';
-import { accessCookieOptions, ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth/session';
+import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { syncInvestmentOnLogin } from '@/lib/investmentReturns';
 
-export async function POST(req: NextRequest) {
-  const raw = req.cookies.get(REFRESH_COOKIE)?.value;
-  if (!raw) return NextResponse.json({ error: 'No session.' }, { status: 401 });
-
-  const [uid, deviceId, token] = raw.split('.');
-  if (!uid || !deviceId || !token) {
-    return NextResponse.json({ error: 'Malformed session.' }, { status: 401 });
-  }
-
-  const tokenRef = adminDb.collection('users').doc(uid).collection('refreshTokens').doc(deviceId);
-  const [tokenSnap, userSnap] = await Promise.all([tokenRef.get(), adminDb.collection('users').doc(uid).get()]);
-
-  // When there's no token at all
-  if (!tokenSnap.exists || !userSnap.exists) {
+// Explicit session refresh, used by authFetch after a 401. Supabase rotates the tokens and the
+// new cookies are written onto this response.
+export async function POST() {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.refreshSession();
+  if (error || !data.session || !data.user) {
     return NextResponse.json({ error: 'Session expired.' }, { status: 401 });
   }
 
-  // When there is a token but it's expired
-  const stored = tokenSnap.data()!;
-  if (stored.expiresAt.toDate() < new Date()) {
-    return NextResponse.json({ error: 'Session expired.' }, { status: 401 });
-  }
-
-  // We check if the stored token is a valid token
-  const valid = await bcrypt.compare(token, stored.hash);
-  if (!valid) {
-    return NextResponse.json({ error: 'Session expired.' }, { status: 401 });
-  }
-
-  // if all goes well
-  const user = userSnap.data()!;
-  const accessToken = await signAccessToken({ uid, email: user.email, username: user.username, deviceId });
-
-  // A refresh means the user just resumed a session — possibly after being
-  // away for days — so this is as good a "login" moment as sign-in itself
-  // for catching up on backlogged investment returns / expiring a package.
-  // Pass the user data already fetched above (Promise.all) to skip a
-  // second, redundant Firestore read of the same doc.
+  // A refresh means the user just resumed a session — possibly after days away — so it's as good
+  // a "login" moment as sign-in for catching up on backlogged investment returns / expiry.
   try {
-    await syncInvestmentOnLogin(uid, user);
+    const { data: profile } = await supabaseAdmin.from('profiles').select('*').eq('id', data.user.id).maybeSingle();
+    if (profile) await syncInvestmentOnLogin(data.user.id, profile);
   } catch (err) {
     console.error('[refresh] investment returns sync failed:', err);
   }
 
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set(ACCESS_COOKIE, accessToken, accessCookieOptions());
-  return res;
+  return NextResponse.json({ ok: true });
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/auth/session';
 import { redis, gameLeaderboardKey, gameLeaderboardNamesKey, CASINO_GAME_IDS, type CasinoGameId } from '@/lib/redis';
 import { logAnalyticsEvent } from '@/lib/analytics';
@@ -18,24 +18,18 @@ export async function POST(req: NextRequest) {
   const leaderboardKey = gameLeaderboardKey(gameId);
   const namesKey = gameLeaderboardNamesKey(gameId);
 
-  // uid + email(-derived username) are used internally to key the write,
-  // but only `username`/`score` are ever surfaced by the leaderboard read.
+  // uid + username key the write, but only `username`/`score` are ever surfaced by the leaderboard read.
   const existing = await redis.zscore(leaderboardKey, session.uid);
   if (existing === null || score > Number(existing)) {
     await Promise.all([
       redis.zadd(leaderboardKey, { score, member: session.uid }),
       redis.hset(namesKey, { [session.uid]: session.username })
     ]);
+    // The profile's high score only ever changes when the leaderboard score does, so skip the
+    // database write for non-record scores.
+    await supabaseAdmin.rpc('set_casino_high_score', { p_user: session.uid, p_game: gameId, p_score: score });
   }
 
-  await logAnalyticsEvent('casino_score_submitted', score);
-  await adminDb
-    .collection('users')
-    .doc(session.uid)
-    .set(
-      { casinoHighScores: { [gameId]: existing === null ? score : Math.max(Number(existing), score) } },
-      { merge: true }
-    );
-
+  await logAnalyticsEvent('casino_score_submitted', score).catch((e) => console.error('[casino] analytics', e));
   return NextResponse.json({ ok: true });
 }

@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/auth/session';
 import { getLoanBlock } from '@/lib/loans/eligibility';
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit';
 import { buildLoanTimeline, MAX_LOAN_AMOUNT, MIN_LOAN_AMOUNT } from '@/lib/loans/config';
+import { iso, num } from '@/lib/db/format';
 
-// Everything the loans page needs in one call: whether the user may apply
-// (enforcement is re-checked in /api/loans/apply), and their applications
-// with the full four-step timeline for each.
+// Everything the loans page needs in one call: whether the user may apply (enforcement is
+// re-checked in /api/loans/apply), and their applications with the full four-step timeline.
 export async function GET() {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 });
@@ -15,35 +15,28 @@ export async function GET() {
   const limit = await rateLimit('loan-list', session.uid, 30, 60);
   if (!limit.allowed) return tooManyRequests(limit.retryAfter);
 
-  const [userSnap, loansSnap] = await Promise.all([
-    adminDb.collection('users').doc(session.uid).get(),
-    // Single-field filter only (no orderBy) so no composite index is needed;
-    // a user has few applications, so sorting in memory is fine.
-    adminDb.collection('loans').where('uid', '==', session.uid).get()
+  const [profile, loansRes] = await Promise.all([
+    supabaseAdmin.from('profiles').select('account_tier').eq('id', session.uid).maybeSingle(),
+    // Loans and their timeline rows come back in a single round trip.
+    supabaseAdmin
+      .from('loans')
+      .select('id, amount, status, reference, bank_account, created_at, loan_timeline(status, at, by)')
+      .eq('user_id', session.uid)
+      .order('created_at', { ascending: false })
+      .limit(20)
   ]);
 
-  const user = userSnap.data() ?? {};
-  const block = await getLoanBlock(session.uid, user);
+  const block = await getLoanBlock(session.uid, profile.data?.account_tier);
 
-  const docs = loansSnap.docs
-    .sort((a, b) => (b.data().createdAt?.toMillis?.() ?? 0) - (a.data().createdAt?.toMillis?.() ?? 0))
-    .slice(0, 20);
-
-  const loans = await Promise.all(
-    docs.map(async (d) => {
-      const l = d.data();
-      const timelineSnap = await d.ref.collection('timeline').get();
-      return {
-        id: d.id,
-        amount: l.amount,
-        status: l.status,
-        reference: l.reference,
-        bankAccount: l.bankAccount,
-        createdAt: l.createdAt?.toDate?.()?.toISOString?.() ?? null,
-        timeline: buildLoanTimeline(timelineSnap.docs.map((t) => t.data()))
-      };
-    })
-  );
+  const loans = (loansRes.data ?? []).map((l: any) => ({
+    id: l.id,
+    amount: num(l.amount),
+    status: l.status,
+    reference: l.reference,
+    bankAccount: l.bank_account,
+    createdAt: iso(l.created_at),
+    timeline: buildLoanTimeline(l.loan_timeline ?? [])
+  }));
 
   return NextResponse.json({
     allowed: !block,

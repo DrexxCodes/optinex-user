@@ -1,4 +1,3 @@
-import type { DocumentData, Transaction } from 'firebase-admin/firestore';
 import { getDistinctActivePackageCount, MIN_DISTINCT_PACKAGES } from '@/lib/withdrawal/eligibility';
 
 export type LoanBlockCode = 'UPGRADE_REQUIRED' | 'PACKAGE_REQUIRED' | 'MORE_PACKAGES_REQUIRED';
@@ -13,15 +12,14 @@ export type LoanBlock = { code: LoanBlockCode; message: string };
  *   3. upgraded, 1 active package  -> add one more package
  * No "enabled date" or payout-method requirement.
  *
- * Pass `tx` when calling inside a Firestore transaction so the package count
- * is read atomically with the write. Returns the first failing rule, or null.
+ * Returns the first failing rule, or null.
  */
-export async function getLoanBlock(uid: string, user: DocumentData, tx?: Transaction): Promise<LoanBlock | null> {
-  if (user.accountTier !== 'upgraded') {
+export async function getLoanBlock(uid: string, accountTier: string | null | undefined): Promise<LoanBlock | null> {
+  if (accountTier !== 'upgraded') {
     return { code: 'UPGRADE_REQUIRED', message: 'You need to upgrade your account first before you can apply for a loan.' };
   }
 
-  const count = await getDistinctActivePackageCount(uid, tx);
+  const count = await getDistinctActivePackageCount(uid);
   if (count >= MIN_DISTINCT_PACKAGES) return null;
 
   if (count === 0) {

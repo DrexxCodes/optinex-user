@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/auth/session';
+import { iso } from '@/lib/db/format';
 
 const CYCLE_MS = 1000 * 60 * 60 * 24;
 
@@ -8,14 +9,18 @@ export async function GET() {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 });
 
-  const userRef = adminDb.collection('users').doc(session.uid);
-  const [userSnap, checkinsSnap] = await Promise.all([
-    userRef.get(),
-    userRef.collection('checkins').orderBy('timestamp', 'desc').limit(30).get()
+  const [profile, checkins] = await Promise.all([
+    supabaseAdmin.from('profiles').select('last_checkin_at, streak_count').eq('id', session.uid).maybeSingle(),
+    supabaseAdmin
+      .from('checkins')
+      .select('id, date, created_at')
+      .eq('user_id', session.uid)
+      .order('id', { ascending: false })
+      .limit(30)
   ]);
 
-  const user = userSnap.data() ?? {};
-  const lastCheckinAt = user.lastCheckinAt?.toDate?.() as Date | undefined;
+  const user = profile.data;
+  const lastCheckinAt = user?.last_checkin_at ? new Date(user.last_checkin_at) : undefined;
   const now = new Date();
   const canCheckIn = !lastCheckinAt || now.getTime() - lastCheckinAt.getTime() >= CYCLE_MS;
   const nextAvailableAt = lastCheckinAt ? new Date(lastCheckinAt.getTime() + CYCLE_MS) : null;
@@ -23,11 +28,11 @@ export async function GET() {
   return NextResponse.json({
     canCheckIn,
     nextAvailableAt,
-    streakCount: user.streakCount ?? 0,
-    history: checkinsSnap.docs.map((d) => ({
-      id: d.id,
-      date: d.data().date,
-      timestamp: d.data().timestamp?.toDate?.() ?? null
+    streakCount: user?.streak_count ?? 0,
+    history: (checkins.data ?? []).map((c) => ({
+      id: String(c.id),
+      date: c.date,
+      timestamp: iso(c.created_at)
     }))
   });
 }

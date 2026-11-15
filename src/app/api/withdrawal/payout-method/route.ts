@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/auth/session';
 
 export async function POST(req: NextRequest) {
@@ -11,10 +11,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Complete bank details are required.' }, { status: 400 });
   }
 
-  await adminDb.collection('users').doc(session.uid).set(
-    { payoutMethod: { accountNumber, bankCode, bankName, accountName } },
-    { merge: true }
-  );
+  const { error } = await supabaseAdmin
+    .from('profiles')
+    .update({ payout_method: { accountNumber, bankCode, bankName, accountName } })
+    .eq('id', session.uid);
+  if (error) return NextResponse.json({ error: 'Could not save your payout details.' }, { status: 500 });
 
   return NextResponse.json({ ok: true });
 }

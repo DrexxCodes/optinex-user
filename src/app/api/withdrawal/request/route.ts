@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/auth/session';
 import { generateReference } from '@/lib/refGenerator';
 import { logAnalyticsEvent } from '@/lib/analytics';
-import { getDistinctActivePackageCount, MIN_DISTINCT_PACKAGES } from '@/lib/withdrawal/eligibility';
+import { MIN_DISTINCT_PACKAGES } from '@/lib/withdrawal/eligibility';
+import { rpcMessage } from '@/lib/db/format';
 
 export async function POST(req: NextRequest) {
   const session = await getSessionUser();
@@ -15,62 +15,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Enter a valid amount.' }, { status: 400 });
   }
 
-  const userRef = adminDb.collection('users').doc(session.uid);
+  // Every gatekeeper rule, the balance check, the withdrawal row, the wallet debit and its
+  // transaction record run atomically inside one Postgres function (profile row locked).
+  const { data: reference, error } = await supabaseAdmin.rpc('request_withdrawal', {
+    p_user: session.uid,
+    p_amount: Number(amount),
+    p_ref: generateReference(),
+    p_min_packages: MIN_DISTINCT_PACKAGES
+  });
 
-  try {
-    const reference = await adminDb.runTransaction(async (tx) => {
-      const [userSnap, configSnap] = await Promise.all([
-        tx.get(userRef),
-        tx.get(adminDb.collection('config').doc('withdrawal'))
-      ]);
-      if (!userSnap.exists) throw new Error('USER_NOT_FOUND');
-
-      const user = userSnap.data()!;
-      const config = configSnap.exists ? configSnap.data()! : {};
-      const enabledDate = config.enabledDate?.toDate?.() ?? null;
-      const dateThresholdReached = !!enabledDate && new Date() >= enabledDate;
-      const isUpgraded = user.accountTier === 'upgraded';
-      const hasPaidPackage = user.packageStatus && user.packageStatus !== 'Free' && user.packageStatus !== 'pending verification';
-
-      if (!dateThresholdReached) throw new Error('WITHDRAWAL_NOT_ENABLED');
-      if (!isUpgraded) throw new Error('UPGRADE_REQUIRED');
-      if (!hasPaidPackage) throw new Error('PACKAGE_REQUIRED');
-
-      const distinctPackageCount = await getDistinctActivePackageCount(session.uid, tx);
-      if (distinctPackageCount < MIN_DISTINCT_PACKAGES) throw new Error('MULTIPLE_PACKAGES_REQUIRED');
-
-      if (!user.payoutMethod) throw new Error('NO_PAYOUT_METHOD');
-      if ((user.walletAmount ?? 0) < amount) throw new Error('INSUFFICIENT_BALANCE');
-
-      const reference = generateReference();
-      const withdrawalRef = adminDb.collection('withdrawals').doc();
-
-      tx.set(withdrawalRef, {
-        uid: session.uid,
-        amount,
-        payoutMethod: user.payoutMethod,
-        status: 'pending',
-        reference,
-        createdAt: FieldValue.serverTimestamp()
-      });
-      tx.set(
-        userRef.collection('walletTransactions').doc(),
-        {
-          txnType: 'debit',
-          txnName: 'withdrawal request',
-          amount,
-          timestamp: FieldValue.serverTimestamp(),
-          txnRef: reference
-        }
-      );
-      tx.set(userRef, { walletAmount: FieldValue.increment(-amount) }, { merge: true });
-
-      return reference;
-    });
-
-    await logAnalyticsEvent('withdrawal_requested', amount);
-    return NextResponse.json({ ok: true, reference });
-  } catch (err: any) {
+  if (error) {
     const messages: Record<string, string> = {
       WITHDRAWAL_NOT_ENABLED: "Withdrawal isn't enabled yet. Check back later.",
       UPGRADE_REQUIRED: 'You must upgrade your account to access withdrawals.',
@@ -79,8 +33,11 @@ export async function POST(req: NextRequest) {
       NO_PAYOUT_METHOD: 'Add your payout details before requesting a withdrawal.',
       INSUFFICIENT_BALANCE: 'Your wallet balance is too low for this amount.'
     };
-    const message = messages[err.message] ?? 'Could not process your withdrawal request.';
-    console.error('[withdrawal/request]', err);
+    const message = messages[rpcMessage(error)] ?? 'Could not process your withdrawal request.';
+    console.error('[withdrawal/request]', error);
     return NextResponse.json({ error: message }, { status: 400 });
   }
+
+  await logAnalyticsEvent('withdrawal_requested', Number(amount)).catch((e) => console.error('[withdrawal] analytics', e));
+  return NextResponse.json({ ok: true, reference });
 }

@@ -6,6 +6,7 @@ import { useState, Suspense } from 'react';
 import { Gift } from 'lucide-react';
 import AuthCard from '../components/AuthCard';
 import FormField from '../components/FormField';
+import { signInRequest } from '@/lib/auth/clientAuth';
 
 function SignInForm() {
   const router = useRouter();
@@ -24,15 +25,9 @@ function SignInForm() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/signin', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? 'Could not sign you in.');
+      const result = await signInRequest(form.email, form.password);
+      if (!result.ok) {
+        setError(result.error);
         return;
       }
       router.push('/dashboard');

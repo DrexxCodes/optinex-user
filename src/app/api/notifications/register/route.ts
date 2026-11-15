@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, adminMessaging } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { adminMessaging } from '@/lib/firebase/admin';
 import { getSessionUser } from '@/lib/auth/session';
 
-// All devices are subscribed to this single topic so the admin app can
-// broadcast a platform-wide push with one `send({ topic })` call instead of
-// looping over every stored token.
+// All devices are subscribed to this single topic so the admin app can broadcast a platform-wide
+// push with one `send({ topic })` call instead of looping over every stored token.
+// FCM stays purely as the push *delivery* channel; the tokens themselves live in Supabase.
 const PLATFORM_TOPIC = 'platform_all';
 
 export async function POST(req: NextRequest) {
@@ -17,26 +18,19 @@ export async function POST(req: NextRequest) {
   }
 
   const now = Date.now();
-  await adminDb
-    .collection('pushTokens')
-    .doc(token)
-    .set(
-      {
-        token,
-        uid: session.uid,
-        deviceId: deviceId ?? null,
-        createdAt: now,
-        updatedAt: now
-      },
-      { merge: true }
-    );
+  const { error } = await supabaseAdmin
+    .from('push_tokens')
+    .upsert({ token, user_id: session.uid, device_id: deviceId ?? null, created_at: now, updated_at: now }, { onConflict: 'token' });
+  if (error) {
+    console.error('[notifications/register]', error);
+    return NextResponse.json({ error: 'Could not register this device.' }, { status: 500 });
+  }
 
   try {
     await adminMessaging.subscribeToTopic(token, PLATFORM_TOPIC);
   } catch {
-    // Subscription failure (e.g. a stale/invalid token slipping through)
-    // shouldn't fail the request — the token is still saved, and the next
-    // successful getToken() call on the client will retry.
+    // Subscription failure (e.g. a stale/invalid token slipping through) shouldn't fail the
+    // request — the token is still saved, and the next successful getToken() call retries.
   }
 
   return NextResponse.json({ ok: true });
@@ -51,10 +45,10 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'A push token is required.' }, { status: 400 });
   }
 
-  const snap = await adminDb.collection('pushTokens').doc(token).get();
-  if (snap.exists && snap.data()?.uid === session.uid) {
+  const { data } = await supabaseAdmin.from('push_tokens').select('user_id').eq('token', token).maybeSingle();
+  if (data && data.user_id === session.uid) {
     await adminMessaging.unsubscribeFromTopic(token, PLATFORM_TOPIC).catch(() => {});
-    await adminDb.collection('pushTokens').doc(token).delete();
+    await supabaseAdmin.from('push_tokens').delete().eq('token', token);
   }
 
   return NextResponse.json({ ok: true });

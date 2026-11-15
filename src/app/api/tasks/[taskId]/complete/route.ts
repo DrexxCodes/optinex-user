@@ -1,51 +1,31 @@
 import { NextResponse } from 'next/server';
-import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb } from '@/lib/firebase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/auth/session';
 import { generateReference } from '@/lib/refGenerator';
 import { logAnalyticsEvent } from '@/lib/analytics';
+import { rpcMessage } from '@/lib/db/format';
 
 export async function POST(_req: Request, { params }: { params: Promise<{ taskId: string }> }) {
   const session = await getSessionUser();
   if (!session) return NextResponse.json({ error: 'Unauthenticated.' }, { status: 401 });
 
   const { taskId } = await params;
-  const userRef = adminDb.collection('users').doc(session.uid);
-  const taskRef = adminDb.collection('tasks').doc(taskId);
-  const completedRef = userRef.collection('completedTasks').doc(taskId);
 
-  try {
-    const reward = await adminDb.runTransaction(async (tx) => {
-      const [taskSnap, completedSnap] = await Promise.all([tx.get(taskRef), tx.get(completedRef)]);
-      if (!taskSnap.exists || taskSnap.data()?.active === false) throw new Error('TASK_UNAVAILABLE');
-      if (completedSnap.exists) throw new Error('ALREADY_COMPLETED');
+  const { data, error } = await supabaseAdmin.rpc('complete_task', {
+    p_user: session.uid,
+    p_task: taskId,
+    p_ref: generateReference()
+  });
 
-      const task = taskSnap.data()!;
-      const txnRef = generateReference();
-
-      tx.set(completedRef, { completedAt: FieldValue.serverTimestamp(), reward: task.reward });
-      tx.set(userRef.collection('walletTransactions').doc(), {
-        txnType: 'credit',
-        txnName: `task reward — ${task.name}`,
-        amount: task.reward,
-        timestamp: FieldValue.serverTimestamp(),
-        txnRef
-      });
-      tx.set(userRef, { walletAmount: FieldValue.increment(task.reward) }, { merge: true });
-
-      return task.reward;
-    });
-
-    await logAnalyticsEvent('task_completed', reward);
-    return NextResponse.json({ ok: true, reward });
-  } catch (err: any) {
-    if (err.message === 'ALREADY_COMPLETED') {
-      return NextResponse.json({ error: 'You already claimed this task.' }, { status: 409 });
-    }
-    if (err.message === 'TASK_UNAVAILABLE') {
-      return NextResponse.json({ error: 'This task is no longer available.' }, { status: 410 });
-    }
-    console.error('[tasks/complete]', err);
+  if (error) {
+    const msg = rpcMessage(error);
+    if (msg === 'ALREADY_COMPLETED') return NextResponse.json({ error: 'You already claimed this task.' }, { status: 409 });
+    if (msg === 'TASK_UNAVAILABLE') return NextResponse.json({ error: 'This task is no longer available.' }, { status: 410 });
+    console.error('[tasks/complete]', error);
     return NextResponse.json({ error: 'Could not complete task.' }, { status: 500 });
   }
+
+  const reward = Number(data);
+  await logAnalyticsEvent('task_completed', reward).catch((e) => console.error('[tasks/complete] analytics', e));
+  return NextResponse.json({ ok: true, reward });
 }
