@@ -1,6 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAccessToken } from '@/lib/auth/jwt';
 import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth/session';
+import { MAINTENANCE_PATH, isMaintenanceMode } from '@/lib/maintenance';
+
+// Route prefixes that sit behind the session gate / auth bounce. Previously
+// expressed through `config.matcher`; the matcher is now broad (so the
+// maintenance redirect can cover every page), so the same list is checked
+// in code instead.
+const SESSION_GATED_PREFIXES = [
+  '/dashboard',
+  '/streak',
+  '/tasks',
+  '/investment',
+  '/withdrawal',
+  '/loans',
+  '/casino',
+  '/profile',
+  '/referral',
+  '/transactions',
+  '/upgrade',
+  '/admin',
+  '/auth'
+];
+
+const isSessionGated = (pathname: string) =>
+  SESSION_GATED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
 // Route-level gate. This is a fast, edge-friendly check on the access token
 // only — full session/refresh handling still lives in the API routes.
@@ -27,6 +51,32 @@ import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth/session';
 // the Firestore Admin SDK, which aren't Edge-runtime friendly.
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Maintenance mode runs first: it needs no cookies or JWT verification,
+  // so every page request is redirected without any auth work (cheaper and
+  // faster while the backend is being upgraded).
+  const maintenance = isMaintenanceMode();
+  const onMaintenancePage = pathname === MAINTENANCE_PATH;
+
+  if (maintenance) {
+    if (onMaintenancePage) return NextResponse.next();
+    const url = req.nextUrl.clone();
+    url.pathname = MAINTENANCE_PATH;
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
+  // Maintenance is off — nobody should be sitting on the maintenance page
+  // (e.g. a user who left the tab open), so send them back to the app.
+  if (onMaintenancePage) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
+  if (!isSessionGated(pathname)) return NextResponse.next();
+
   const accessToken = req.cookies.get(ACCESS_COOKIE)?.value;
   const hasRefreshToken = !!req.cookies.get(REFRESH_COOKIE)?.value;
   const session = accessToken ? await verifyAccessToken(accessToken) : null;
@@ -53,20 +103,10 @@ export async function proxy(req: NextRequest) {
   return NextResponse.next();
 }
 
+// Broad matcher so maintenance mode can cover every page, including the
+// landing page. Skips API routes (cron jobs, Paystack/UploadThing webhooks
+// must keep working), Next internals, and any path with a file extension
+// (sw.js, manifest.json, images, fonts, maintenance.svg).
 export const config = {
-  matcher: [
-    '/dashboard/:path*',
-    '/streak/:path*',
-    '/tasks/:path*',
-    '/investment/:path*',
-    '/withdrawal/:path*',
-    '/loans/:path*',
-    '/casino/:path*',
-    '/profile/:path*',
-    '/referral/:path*',
-    '/transactions/:path*',
-    '/upgrade/:path*',
-    '/admin/:path*',
-    '/auth/:path*'
-  ]
+  matcher: ['/((?!api|_next/static|_next/image|.*\\..*).*)']
 };
