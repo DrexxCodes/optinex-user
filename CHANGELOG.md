@@ -1,3 +1,29 @@
+# Changelog — API extracted to optinex-backend (user app)
+
+## What changed
+- **No database or service code left in this app.** All 38 route handlers under `src/app/api/**` were ported to the Fastify service `optinex-backend` at the same URLs. `next.config.js` now rewrites `/api/<group>/*` to `BACKEND_URL`, so every existing `authFetch('/api/...')` call works unchanged and session cookies stay same-origin (no CORS).
+- **Auth no longer touches Supabase from the browser.**
+  - `src/lib/auth/clientAuth.ts`: sign-in/sign-up are single calls to the backend, which verifies credentials, sets the httpOnly `optinex_at` / `optinex_rt` cookies and runs the post-login work (analytics + investment catch-up). Sign-up now also signs the user in server-side (`signedIn` flag decides the redirect).
+  - `src/lib/auth/proxySession.ts` (new, replaces `src/lib/supabase/proxy.ts`): `proxy.ts` peeks at the cookie expiry and, if lapsed, asks the backend to rotate it, copying the new cookies onto the request and response. Dead refresh token → cookies cleared + redirect to sign-in. Backend outage → session kept (nobody is logged out by an outage). This is a UX gate only; the backend verifies every API call.
+  - `src/lib/auth/session.ts`: `getSessionUser()` → `isSignedIn()` (reads cookies, no network) for the landing-page navbar.
+  - `src/lib/auth/{cookies,jwt,setCookie}.ts`, `src/lib/api/backend.ts`: small helpers for the above.
+- **Uploads:** `src/lib/uploadthing.ts` no longer imports the (deleted) server router type; the router lives in the backend (`paymentReceipt` endpoint). Set `UPLOADTHING_CALLBACK_URL=<this app's domain>/api/uploadthing` on the backend.
+- Rewrites are an allow-list, so backend-only surfaces such as `/api/admin/*` are not reachable through this domain.
+
+## Fixes
+- `src/components/landing/Testimonials.tsx`: removed a stray `import { s } from "@upstash/redis"` (unused, and `s` is not an export) that pulled a server SDK into a client-facing component and broke the type-check.
+
+## Removed
+- `src/app/api/**` (all routes), `src/lib/supabase/**`, `src/lib/db/**`, `src/lib/firebase/admin.ts`, `src/lib/redis.ts`, `src/lib/rateLimit.ts`, `src/lib/paystack.ts`, `src/lib/investmentReturns.ts`, `src/lib/referral.ts`, `src/lib/refGenerator.ts`, `src/lib/analytics.ts`, `src/lib/dicebear.ts`, `src/lib/loans/eligibility.ts`, `src/lib/withdrawal/eligibility.ts`, `src/app/lib/{redis,dicebear}.ts` (dead Spotix leftovers).
+- `scripts/` (one-off Firebase→Supabase migration tools) moved to `optinex-backend/scripts/`, which owns those dependencies.
+- Dependencies: `@supabase/ssr`, `@supabase/supabase-js`, `@upstash/redis`, `firebase-admin`, `@dicebear/core`, `@dicebear/collection`. (`firebase` stays for browser push registration; `uploadthing` stays for client types.)
+- Env: only `BACKEND_URL` (+ the public Firebase messaging keys) remain; see `.env.example`.
+
+## Verified
+`tsc --noEmit` and `next build` pass (0 API routes remain). Booted against the real backend: sign-in sets cookies through the rewrite, `/api/user/me` works with them, expired access cookie is rotated by the proxy, dead refresh token clears cookies and redirects, logout invalidates the session.
+
+---
+
 # Changelog — Firebase → Supabase migration (user app)
 
 ## What changed

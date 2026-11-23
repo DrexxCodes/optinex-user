@@ -1,22 +1,19 @@
 'use client';
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-
 type AuthResult = { ok: true; redirectTo: string } | { ok: false; error: string };
 
-// Sign-in: Supabase Auth in the browser, then one server call for the post-login work
-// (analytics + investment catch-up) that used to live inside /api/auth/signin.
+// Credentials go to optinex-backend, which checks them, sets the httpOnly session cookies, and runs the
+// post-login work (analytics + investment catch-up) in the same request. The browser never talks to the
+// auth provider directly.
 export async function signInRequest(email: string, password: string): Promise<AuthResult> {
-  const supabase = createSupabaseBrowserClient();
-  const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-
-  if (error) {
-    if (error.status === 429) return { ok: false, error: 'Too many attempts. Please wait a moment and try again.' };
-    if (error.status && error.status >= 500) return { ok: false, error: 'Something went wrong signing you in.' };
-    return { ok: false, error: 'Invalid email or password.' };
-  }
-
-  await fetch('/api/auth/signin', { method: 'POST', credentials: 'include' }).catch(() => {});
+  const res = await fetch('/api/auth/signin', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email.trim().toLowerCase(), password })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, error: data.error ?? 'Invalid email or password.' };
   return { ok: true, redirectTo: '/dashboard' };
 }
 
@@ -28,8 +25,8 @@ export type SignUpInput = {
   referralKey: string;
 };
 
-// Sign-up: the server creates the account (atomic profile + referral bonus), then the browser
-// signs in to establish the session.
+// The backend creates the account (atomic profile + referral bonus) and signs the user in. If that last step
+// hiccups the account still exists — `signedIn` is false and we send them to the sign-in page.
 export async function signUpRequest(form: SignUpInput): Promise<AuthResult> {
   const res = await fetch('/api/auth/signup', {
     method: 'POST',
@@ -39,9 +36,5 @@ export async function signUpRequest(form: SignUpInput): Promise<AuthResult> {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) return { ok: false, error: data.error ?? 'Could not create your account.' };
-
-  const supabase = createSupabaseBrowserClient();
-  const { error } = await supabase.auth.signInWithPassword({ email: form.email.trim().toLowerCase(), password: form.password });
-  // Account exists either way — if the immediate sign-in hiccups, send them to the sign-in page.
-  return { ok: true, redirectTo: error ? '/auth/signin' : '/dashboard' };
+  return { ok: true, redirectTo: data.signedIn ? '/dashboard' : '/auth/signin' };
 }

@@ -1,5 +1,20 @@
+/**
+ * Every /api/* call is served by optinex-backend (Fastify). Only the path groups this app actually uses are
+ * forwarded, so backend-only surfaces (e.g. /api/admin/*) are never reachable through this domain.
+ * Cookies set by the backend pass straight through, so they stay host-only on this app's domain.
+ */
+const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:4000').replace(/\/+$/, '');
+const API_GROUPS = [
+  'auth', 'avatar', 'casino', 'cron', 'investment', 'loans', 'notifications', 'popup', 'referral',
+  'streak', 'tasks', 'upgrade', 'uploadthing', 'user', 'utils', 'wallet', 'withdrawal'
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async rewrites() {
+    // `:path*` also matches the bare group root (/api/popup, /api/loans, ...).
+    return API_GROUPS.map((group) => ({ source: `/api/${group}/:path*`, destination: `${BACKEND_URL}/api/${group}/:path*` }));
+  },
   images: {
     // Lets next/image serve SVGs through the optimizer.
     // Your DiceBear <Image> tags currently use `unoptimized`, which already

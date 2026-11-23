@@ -8,6 +8,16 @@ import AuthCard from '../components/AuthCard';
 import FormField from '../components/FormField';
 import { signInRequest } from '@/lib/auth/clientAuth';
 
+/** Backend errors come back as { code, message } — normalize to a string. */
+function errorToMessage(err: unknown): string {
+  if (typeof err === 'string') return err;
+  if (err && typeof err === 'object' && 'message' in err) {
+    const m = (err as { message?: unknown }).message;
+    if (typeof m === 'string' && m.trim()) return m;
+  }
+  return 'Something went wrong. Please try again.';
+}
+
 function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,7 +37,7 @@ function SignInForm() {
     try {
       const result = await signInRequest(form.email, form.password);
       if (!result.ok) {
-        setError(result.error);
+        setError(errorToMessage(result.error));
         return;
       }
       router.push('/dashboard');
@@ -39,7 +49,9 @@ function SignInForm() {
     }
   };
 
-  const signUpHref = referralKey ? `/auth/signup?ref=${encodeURIComponent(referralKey)}` : '/auth/signup';
+  const signUpHref = referralKey
+    ? `/auth/signup?ref=${encodeURIComponent(referralKey)}`
+    : '/auth/signup';
 
   return (
     <AuthCard title="Welcome back" subtitle="Sign in to keep growing your wallet.">
@@ -47,7 +59,8 @@ function SignInForm() {
         <div className="mb-5 flex items-center gap-2.5 rounded-xl bg-brand-50 px-3.5 py-3 text-xs text-brand-700">
           <Gift size={16} className="shrink-0 text-brand-500" />
           <span>
-            You were invited with referral code <span className="font-semibold">{referralKey}</span>. New here?{' '}
+            You were invited with referral code{' '}
+            <span className="font-semibold">{referralKey}</span>. New here?{' '}
             <Link href={signUpHref} className="font-semibold underline">
               Create an account
             </Link>{' '}
@@ -57,10 +70,26 @@ function SignInForm() {
       )}
 
       <form onSubmit={onSubmit} className="space-y-4">
-        <FormField label="Email" type="email" required value={form.email} onChange={onChange('email')} placeholder="you@example.com" />
-        <FormField label="Password" isPassword required value={form.password} onChange={onChange('password')} placeholder="••••••••" />
+        <FormField
+          label="Email"
+          type="email"
+          required
+          value={form.email}
+          onChange={onChange('email')}
+          placeholder="you@example.com"
+        />
+        <FormField
+          label="Password"
+          isPassword
+          required
+          value={form.password}
+          onChange={onChange('password')}
+          placeholder="••••••••"
+        />
 
-        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+        )}
 
         <button
           type="submit"

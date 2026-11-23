@@ -1,5 +1,3 @@
-import { s } from "@upstash/redis";
-
 const REVIEWS = [
   {
     initials: 'CO',

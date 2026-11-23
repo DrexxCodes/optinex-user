@@ -7,6 +7,7 @@ import { Gift } from 'lucide-react';
 import AuthCard from '../components/AuthCard';
 import FormField from '../components/FormField';
 import { signUpRequest } from '@/lib/auth/clientAuth';
+import { errorToMessage } from '@/lib/errors';
 
 function SignUpForm() {
   const router = useRouter();
@@ -16,13 +17,16 @@ function SignUpForm() {
     email: '',
     username: '',
     password: '',
-    referralKey: searchParams.get('ref') ?? ''
+    referralKey: searchParams.get('ref') ?? '',
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const onChange = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [key]: key === 'username' ? e.target.value.toLowerCase() : e.target.value }));
+    setForm((f) => ({
+      ...f,
+      [key]: key === 'username' ? e.target.value.toLowerCase() : e.target.value,
+    }));
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,10 +35,15 @@ function SignUpForm() {
     try {
       const result = await signUpRequest(form);
       if (!result.ok) {
-        setError(result.error);
+        setError(errorToMessage(result.error));
         return;
       }
-      router.push(result.redirectTo);
+      // Guard against a missing redirectTo — fall back to /dashboard.
+      const redirectTo =
+        'redirectTo' in result && typeof result.redirectTo === 'string' && result.redirectTo
+          ? result.redirectTo
+          : '/dashboard';
+      router.push(redirectTo);
       router.refresh();
     } catch {
       setError('Network error — please try again.');
@@ -49,16 +58,43 @@ function SignUpForm() {
         <div className="mb-5 flex items-center gap-2.5 rounded-xl bg-brand-50 px-3.5 py-3 text-xs text-brand-700">
           <Gift size={16} className="shrink-0 text-brand-500" />
           <span>
-            Signing up with referral code <span className="font-semibold">{form.referralKey}</span>.
+            Signing up with referral code{' '}
+            <span className="font-semibold">{form.referralKey}</span>.
           </span>
         </div>
       )}
 
       <form onSubmit={onSubmit} className="space-y-4">
-        <FormField label="Full Name" required value={form.fullName} onChange={onChange('fullName')} placeholder="Ada Eze" />
-        <FormField label="Email" type="email" required value={form.email} onChange={onChange('email')} placeholder="you@example.com" />
-        <FormField label="Username" required value={form.username} onChange={onChange('username')} placeholder="ada_eze" />
-        <FormField label="Password" isPassword required value={form.password} onChange={onChange('password')} placeholder="At least 6 characters" />
+        <FormField
+          label="Full Name"
+          required
+          value={form.fullName}
+          onChange={onChange('fullName')}
+          placeholder="Ada Eze"
+        />
+        <FormField
+          label="Email"
+          type="email"
+          required
+          value={form.email}
+          onChange={onChange('email')}
+          placeholder="you@example.com"
+        />
+        <FormField
+          label="Username"
+          required
+          value={form.username}
+          onChange={onChange('username')}
+          placeholder="ada_eze"
+        />
+        <FormField
+          label="Password"
+          isPassword
+          required
+          value={form.password}
+          onChange={onChange('password')}
+          placeholder="At least 6 characters"
+        />
         <FormField
           label="Referral Key (optional)"
           value={form.referralKey}
@@ -66,7 +102,9 @@ function SignUpForm() {
           placeholder="e.g. incossify-a3f9k2"
         />
 
-        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+        )}
 
         <button
           type="submit"

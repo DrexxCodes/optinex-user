@@ -1,6 +1,6 @@
 // games — the single source of truth for which games exist in the casino
 // tab bar. `id` doubles as the `game` query/body param the leaderboard API
-// keys on, so it must stay in sync with GAME_IDS in src/lib/redis.ts.
+// keys on, so it must stay in sync with GAME_IDS in optinex-backend (src/config/constants.ts).
 export const GAME_IDS = ['brick-slasher', 'reaction-tap', 'stack-tower', 'endless-runner'] as const;
 
 export type GameId = (typeof GAME_IDS)[number];

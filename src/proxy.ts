@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redirectWithCookies, updateSession } from '@/lib/supabase/proxy';
+import { redirectWithCookies, updateSession } from '@/lib/auth/proxySession';
 
-// Route-level gate. `updateSession` validates the Supabase Auth JWT locally and — when the
-// short-lived access token has expired but the refresh token is still good — transparently
-// refreshes it and re-issues the cookies, so a still-valid session is never mistaken for a
-// logged-out one (this replaces the old hand-rolled access/refresh cookie dance).
+// Route-level gate (UX only — real authorization happens in optinex-backend on every API call).
+// `updateSession` checks the session cookie's expiry and, when the short-lived access token has lapsed but the
+// refresh cookie is still good, asks the backend to rotate it and re-issues the cookies, so a still-valid
+// session is never mistaken for a logged-out one.
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const { response, authenticated } = await updateSession(req);
