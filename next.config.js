@@ -13,7 +13,10 @@ const API_GROUPS = [
 const nextConfig = {
   async rewrites() {
     // `:path*` also matches the bare group root (/api/popup, /api/loans, ...).
-    return API_GROUPS.map((group) => ({ source: `/api/${group}/:path*`, destination: `${BACKEND_URL}/api/${group}/:path*` }));
+    const groups = API_GROUPS.map((group) => ({ source: `/api/${group}/:path*`, destination: `${BACKEND_URL}/api/${group}/:path*` }));
+    // The backend serves UploadThing at exactly /api/uploadthing and doesn't match a trailing slash, so the bare
+    // path gets its own exact rewrite (listed first) instead of relying on `:path*` for it.
+    return [{ source: '/api/uploadthing', destination: `${BACKEND_URL}/api/uploadthing` }, ...groups];
   },
   images: {
     // Lets next/image serve SVGs through the optimizer.
